@@ -33,6 +33,13 @@ int install_package(const char *pkg_path)
         return 1; // 返回1表示失败
     }
 
+    if(!pkg_path)
+    {
+        cpk_printf(ERROR, "--install requires at least one package file as an argument.\n");
+        less_info_cpkg();
+        return 1; // 返回1表示失败
+    }
+    
     // 检查软件包文件是否存在
     FILE *pkg_file = fopen(pkg_path, "rb");
     if (!pkg_file) 

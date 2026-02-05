@@ -26,6 +26,21 @@ extern const char *help_message; // 帮助信息字符串
 #define ERROR "\033[1;31mERROR:\033[0m"        // 错误标识
 #define WARNING "\033[1;33mWARNING:\033[0m"      // 警告标识
 #define INFO "\033[1;32mINFORMATION:\033[0m"         // 信息标识
+#define VISION "class 0.0.0.1"         // 版本标识
+
+// 架构信息定义，用于判断系统架构
+#if defined(__amd64__) || defined(__x86_64__) || defined(_M_X64) || defined(_M_AMD64)
+#define ARCH "amd64"
+#elif defined(__i386__) || defined(__i386) || defined(_M_IX86)
+#define ARCH "i386"
+#elif defined(__arm__) || defined(__arm) || defined(_M_ARM)
+#define ARCH "arm"
+#elif defined(__aarch64__) || defined(__aarch64) || defined(_M_ARM64)
+#define ARCH "aarch64"
+#else
+#define ARCH "unknown"
+#endif
+
 
 // 彩色打印宏
 // 正确的 cpk_printf 宏定义
@@ -33,6 +48,7 @@ extern const char *help_message; // 帮助信息字符串
     do { \
         printf("%s %s " format, CPKG_NAME, level, ##__VA_ARGS__); \
     } while (0)
+
 /**
  * @brief 夹带私货，赞美帝皇
  */
@@ -53,5 +69,10 @@ extern const char *help_message; // 帮助信息字符串
     for(int idx = 0; help_message[idx] != '\0'; idx++) { \
         putchar(help_message[idx]); \
     }
+
+#define cpkg_version() \
+    printf("Cpkg Package Management ProgramVersion %s(amd64).\n"\
+        "This program is free software; for copying conditions, see the GNU General Public License \n"\
+        "version 3 or later. This program comes with ABSOLUTELY NO WARRANTY.\n", VISION, ARCH);
 
 #endif // HELP_H
