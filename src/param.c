@@ -17,7 +17,7 @@
 
 #include "../include/param.h"
 
-extern struct option long_options[] = {
+struct option long_options[] = {
     {"help", no_argument, 0, 'h'},
     {"version", no_argument, 0, 'v'},
     {"install", required_argument, 0, 'i'},

@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include "../include/cpkg.h"
+#include "../include/param.h"
 #include "../include/help.h"
 
 int main(int argc, char *argv[])
@@ -36,7 +37,7 @@ int main(int argc, char *argv[])
     }
 
     // 解析命令行参数
-    while((opt = getopt_long(argc, argv, "hvir", NULL, &option_index)) != -1)
+    while((opt = getopt_long(argc, argv, "hvi:r", long_options, &option_index)) != -1)
     {
         switch(opt)
         {
@@ -46,17 +47,25 @@ int main(int argc, char *argv[])
             case 'v': // 版本信息
                 cpkg_version();
                 return 0;
-            case 'i': // 安装包
-                install_package(optarg);
+            case 'i':
+                if (optarg)
+                    install_package(optarg);
+                else {
+                    less_info_cpkg();
+                    return 1;
+                }
                 break;
-            case 'r': // 卸载包
-                remove_package(optarg);
+            case 'r':
+                if (optarg)
+                    remove_package(optarg);
+                else {
+                    less_info_cpkg();
+                    return 1;
+                }
                 break;
             default:
-                cpk_printf(ERROR, "Invalid option %c.\n", opt);
                 less_info_cpkg();
                 return 1;
-    
         }
     }
     return 0;
