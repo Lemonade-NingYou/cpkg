@@ -26,7 +26,7 @@ extern const char *help_message; // 帮助信息字符串
 #define ERROR "\033[1;31mERROR:\033[0m"        // 错误标识
 #define WARNING "\033[1;33mWARNING:\033[0m"      // 警告标识
 #define INFO "\033[1;32mINFORMATION:\033[0m"         // 信息标识
-#define VISION "class 0.0.0.1"         // 版本标识
+#define VISION "class 0.0.0.2"         // 版本标识
 
 // 架构信息定义，用于判断系统架构
 #if defined(__amd64__) || defined(__x86_64__) || defined(_M_X64) || defined(_M_AMD64)

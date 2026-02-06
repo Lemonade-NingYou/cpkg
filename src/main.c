@@ -22,6 +22,9 @@
 #include "../include/param.h"
 #include "../include/help.h"
 
+/**
+ * @brief cpkg 一个优秀的c包管底层
+ */
 int main(int argc, char *argv[])
 {
     int opt; // 选项
@@ -37,7 +40,7 @@ int main(int argc, char *argv[])
     }
 
     // 解析命令行参数
-    while((opt = getopt_long(argc, argv, "hvir", long_options, &option_index)) != -1)
+    while((opt = getopt_long(argc, argv, "hvirm", long_options, &option_index)) != -1)
     {
         switch(opt)
         {
@@ -77,6 +80,18 @@ int main(int argc, char *argv[])
                 cpk_printf(ERROR, "This operation requires sudo privileges.\n");
                 break;
 
+            case 'm':// 构建包
+                if (optarg)
+                {
+                    build_package(optarg);
+                }
+                else {
+                    cpk_printf(ERROR, "--make-build requires at least one directory name argument\n");
+                    less_info_cpkg();
+                    break;
+                }
+                break;
+                
             default:
                 cpk_printf(ERROR, "Invalid option: -%c\n", opt);
                 less_info_cpkg();
