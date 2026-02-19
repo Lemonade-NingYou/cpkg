@@ -280,3 +280,281 @@ void printf_control_info(Control_Info *ctrl_info)
         printf("  %s\n", ctrl_info->lib_files[i]);
     printf("\n");
 }
+
+/**
+ * 遍历指定目录，将所有常规文件的文件名（含相对路径）存入动态数组。
+ * @param dir_path 目标目录路径
+ * @param count    输出参数，返回文件数量
+ * @return 成功返回动态分配的字符串数组，失败返回 NULL
+ */
+char **collect_files(const char *dir_path, int *count) 
+{
+    DIR *dir = opendir(dir_path);
+    if (!dir) {
+        cpk_printf(ERROR, "opendir: %s\n", strerror(errno));
+        return NULL;
+    }
+
+    char **files = NULL;
+    int file_count = 0;
+    struct dirent *entry;
+    struct stat st;
+
+    while ((entry = readdir(dir)) != NULL) {
+        // 跳过 "." 和 ".."
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        // 构造完整路径
+        char full_path[1024];
+        snprintf(full_path, sizeof(full_path), "%s/%s", dir_path, entry->d_name);
+
+        // 获取文件信息
+        if (stat(full_path, &st) != 0) {
+            cpk_printf(WARNING, "stat: %s\n", strerror(errno));
+            continue;
+        }
+
+        // 只收集常规文件（可调整条件，例如也收集符号链接）
+        if (S_ISREG(st.st_mode)) {
+            // 动态扩展数组
+            char **new_files = realloc(files, (file_count + 1) * sizeof(char *));
+            if (!new_files) {
+                cpk_printf(ERROR, "realloc: %s\n", strerror(errno));
+                // 释放已分配内存
+                for (int i = 0; i < file_count; i++) free(files[i]);
+                free(files);
+                closedir(dir);
+                return NULL;
+            }
+            files = new_files;
+
+            // 复制文件名（这里使用完整路径，也可以只存文件名）
+            files[file_count] = strdup(full_path);
+            if (!files[file_count]) {
+                cpk_printf(ERROR, "strdup: %s\n", strerror(errno));
+                // 释放之前的内容
+                for (int i = 0; i < file_count; i++) free(files[i]);
+                free(files);
+                closedir(dir);
+                return NULL;
+            }
+            file_count++;
+        }
+    }
+
+    closedir(dir);
+    *count = file_count;
+    return files;
+}
+
+/**
+ * @brief 写入安装信息文件
+ * @note 格式：CPK_Header + include_file_count + (len+data) for each include + lib_file_count + (len+data) for each lib
+ * @param install_info  已打开的可写文件流
+ * @param header        包头部信息
+ * @param include_file_count  头文件数量
+ * @param include_file_list   头文件路径数组
+ * @param lib_file_count      库文件数量
+ * @param lib_file_list       库文件路径数组
+ * @return 成功返回0，失败返回-1并设置errno
+ */
+int write_install_file(FILE *install_info, CPK_Header *header,
+                            int include_file_count, char **include_file_list,
+                            int lib_file_count, char **lib_file_list)
+{
+    if (!install_info || !header) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    // 写入头部
+    if (fwrite(header, sizeof(CPK_Header), 1, install_info) != 1) {
+        // fwrite 失败时已设置 errno
+        return -1;
+    }
+
+    // 写入 include 文件数量
+    if (fwrite(&include_file_count, sizeof(int), 1, install_info) != 1) {
+        return -1;
+    }
+
+    // 写入每个 include 文件路径
+    for (int i = 0; i < include_file_count; i++) {
+        size_t len = strlen(include_file_list[i]);
+        int len_int = (int)len;  // 假设长度不超过 INT_MAX
+        if (fwrite(&len_int, sizeof(int), 1, install_info) != 1) {
+            return -1;
+        }
+        if (len > 0 && fwrite(include_file_list[i], 1, len, install_info) != len) {
+            return -1;
+        }
+    }
+
+    // 写入 lib 文件数量
+    if (fwrite(&lib_file_count, sizeof(int), 1, install_info) != 1) {
+        return -1;
+    }
+
+    // 写入每个 lib 文件路径
+    for (int i = 0; i < lib_file_count; i++) {
+        size_t len = strlen(lib_file_list[i]);
+        int len_int = (int)len;
+        if (fwrite(&len_int, sizeof(int), 1, install_info) != 1) {
+            return -1;
+        }
+        if (len > 0 && fwrite(lib_file_list[i], 1, len, install_info) != len) {
+            return -1;
+        }
+    }
+
+    // 确保所有数据已写入
+    if (fflush(install_info) != 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * @brief 从文件中读取安装信息
+ * @param install_info       已打开的可读文件流
+ * @param header             输出参数：接收包头部信息（调用者需确保缓冲区足够）
+ * @param include_file_count 输出参数：头文件数量
+ * @param include_file_list  输出参数：头文件路径数组（动态分配，调用者需释放）
+ * @param lib_file_count     输出参数：库文件数量
+ * @param lib_file_list      输出参数：库文件路径数组（动态分配，调用者需释放）
+ * @return 成功返回0，失败返回-1并设置errno
+ */
+int read_install_file(FILE *install_info, CPK_Header *header,
+                           int *include_file_count, char ***include_file_list,
+                           int *lib_file_count, char ***lib_file_list)
+{
+    if (!install_info || !header || !include_file_count || !include_file_list ||
+        !lib_file_count || !lib_file_list) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    // 初始化输出指针
+    *include_file_count = 0;
+    *include_file_list = NULL;
+    *lib_file_count = 0;
+    *lib_file_list = NULL;
+
+    // 读取头部
+    if (fread(header, sizeof(CPK_Header), 1, install_info) != 1) {
+        // fread 失败，errno 可能已设置
+        return -1;
+    }
+
+    // 读取 include 文件数量
+    int count;
+    if (fread(&count, sizeof(int), 1, install_info) != 1) {
+        return -1;
+    }
+    *include_file_count = count;
+
+    if (count > 0) {
+        *include_file_list = (char **)malloc(count * sizeof(char *));
+        if (!*include_file_list) {
+            return -1; // errno 已由 malloc 设置
+        }
+        // 初始化为 NULL，便于错误时释放
+        for (int i = 0; i < count; i++) {
+            (*include_file_list)[i] = NULL;
+        }
+    } else {
+        *include_file_list = NULL;
+    }
+
+    // 读取每个 include 文件路径
+    for (int i = 0; i < count; i++) {
+        int len;
+        if (fread(&len, sizeof(int), 1, install_info) != 1) {
+            goto error;
+        }
+        if (len < 0) {
+            errno = EINVAL;
+            goto error;
+        }
+        char *str = (char *)malloc(len + 1);
+        if (!str) {
+            goto error;
+        }
+        if (len > 0) {
+            if (fread(str, 1, len, install_info) != (size_t)len) {
+                free(str);
+                goto error;
+            }
+        }
+        str[len] = '\0';
+        (*include_file_list)[i] = str;
+    }
+
+    // 读取 lib 文件数量
+    if (fread(&count, sizeof(int), 1, install_info) != 1) {
+        goto error;
+    }
+    *lib_file_count = count;
+
+    if (count > 0) {
+        *lib_file_list = (char **)malloc(count * sizeof(char *));
+        if (!*lib_file_list) {
+            goto error;
+        }
+        for (int i = 0; i < count; i++) {
+            (*lib_file_list)[i] = NULL;
+        }
+    } else {
+        *lib_file_list = NULL;
+    }
+
+    for (int i = 0; i < count; i++) {
+        int len;
+        if (fread(&len, sizeof(int), 1, install_info) != 1) {
+            goto error;
+        }
+        if (len < 0) {
+            errno = EINVAL;
+            goto error;
+        }
+        char *str = (char *)malloc(len + 1);
+        if (!str) {
+            goto error;
+        }
+        if (len > 0) {
+            if (fread(str, 1, len, install_info) != (size_t)len) {
+                free(str);
+                goto error;
+            }
+        }
+        str[len] = '\0';
+        (*lib_file_list)[i] = str;
+    }
+
+    return 0;
+
+error:
+    // 清理已分配的 include 文件列表
+    if (*include_file_list) {
+        for (int i = 0; i < *include_file_count; i++) {
+            free((*include_file_list)[i]);
+        }
+        free(*include_file_list);
+        *include_file_list = NULL;
+    }
+    *include_file_count = 0;
+
+    // 清理已分配的 lib 文件列表
+    if (*lib_file_list) {
+        for (int i = 0; i < *lib_file_count; i++) {
+            free((*lib_file_list)[i]);
+        }
+        free(*lib_file_list);
+        *lib_file_list = NULL;
+    }
+    *lib_file_count = 0;
+
+    return -1;
+}

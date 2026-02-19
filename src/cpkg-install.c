@@ -43,19 +43,7 @@ int install_package(const char *pkg_path)
         fclose(installed_package);
         return 1;
     }
-
-    // 打印头部信息
-    printf("CPK_Header size: %ld\n", sizeof(CPK_Header));
-    printf("Package name: %s\n", header.name);
-    printf("Package hash: %s\n", header.hash);
-    printf("Package version: %s\n", header.version);
-    printf("Package description: %s\n", header.description);
-    printf("Package homepage: %s\n", header.homepage);
-    printf("Package author: %s\n", header.author);
-    printf("Package license: %s\n", header.license);
-    printf("Package include_install_path: %s\n", header.include_install_path);
-    printf("Package lib_install_path: %s\n", header.lib_install_path);
-
+    
     // 获取文件总大小
     struct stat st;
     if (fstat(fileno(installed_package), &st) != 0)
@@ -106,6 +94,12 @@ int install_package(const char *pkg_path)
     // 此时 content 已完成使命，可释放（也可保留用于后续解压，但这里我们用文件流直接解压）
     free(content);
 
+    if(tf_choose("Do you want to install this package?"))
+    {
+        fclose(installed_package);
+        return 1;
+    }
+
     // 解压包
     char extract_path[MAX_PATH_LEN];
     snprintf(extract_path, MAX_PATH_LEN, "%s/%s", WORK_DIR_NAME, INSTALL_DIR);
@@ -139,24 +133,90 @@ int install_package(const char *pkg_path)
     fclose(installed_package);
     printf("Package installed successfully.\n");
 
-    // 列出解压后的文件（简单遍历）
-    printf("Package contents:\n");
-    DIR *dir = opendir(extract_path);
-    if (dir)
+    // 列出解压后的文件
+    int includefiles = 0, libfiles = 0;
+    char include_path[5*MAX_PATH_LEN], lib_path[5*MAX_PATH_LEN];
+    char **includefile_list = NULL, **libfile_list = NULL;
+
+    // 列出 include 文件
+    snprintf(include_path, 5*MAX_PATH_LEN, "%s/%s/include", extract_path, header.name);
+    includefile_list = collect_files(include_path, &includefiles);
+    if (includefile_list == NULL)
     {
-        struct dirent *entry;
-        while ((entry = readdir(dir)) != NULL)
-        {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-                continue;
-            printf("  %s\n", entry->d_name);
-        }
-        closedir(dir);
+        cpk_printf(ERROR, "Failed to list include files\n");
+        return 1;
     }
-    else
+    // 列出 lib 文件
+    snprintf(lib_path, 5*MAX_PATH_LEN, "%s/%s/lib", extract_path, header.name);
+    libfile_list = collect_files(lib_path, &libfiles);
+    if (libfile_list == NULL)
     {
-        cpk_printf(WARNING, "Cannot list contents of %s\n", extract_path);
+        cpk_printf(ERROR, "Failed to list lib files\n");
+        return 1;
     }
 
+    // 打印文件列表
+    printf("Include files:\n");
+    for (int i = 0; i < includefiles; i++)
+    {
+        printf("%s\n", includefile_list[i]);
+    }
+    printf("Lib files:\n");
+    for (int i = 0; i < libfiles; i++)
+    {
+        printf("%s\n", libfile_list[i]);
+    }
+
+    // 复制文件
+    for (int i = 0; i < includefiles; i++)
+    {
+        if(cp_file(includefile_list[i], header.include_install_path) != 0)
+        {
+            cpk_printf(ERROR, "Failed to copy include file: %s\n", includefile_list[i]);
+            return 1;
+        }
+    }
+
+    for(int i = 0; i < libfiles; i++)
+    {
+        if(cp_file(libfile_list[i], header.lib_install_path) != 0)
+        {
+            cpk_printf(ERROR, "Failed to copy lib file: %s\n", libfile_list[i]);
+            return 1;
+        }
+    }
+
+    // 记录安装信息
+    char install_info_path[MAX_PATH_LEN];
+    snprintf(install_info_path, MAX_PATH_LEN, "%s/%s", WORK_DIR_NAME, "installed.txt");
+    FILE *install_info = fopen(install_info_path, "a");
+    if (install_info == NULL)
+    {
+        cpk_printf(ERROR, "Failed to open install info file: %s\n", install_info_path);
+        return 1;
+    }
+
+    // 写入安装信息
+    if(write_install_file(install_info, &header, includefiles,includefile_list, libfiles, libfile_list))
+    {
+        cpk_printf(ERROR, "Failed to write install info\n");
+        fclose(install_info);
+        return 1;
+    }
+
+        // 释放文件列表
+    for (int i = 0; i < includefiles; i++)
+    {
+        free(includefile_list[i]);
+    }
+    free(includefile_list);
+    for (int i = 0; i < libfiles; i++)
+    {
+        free(libfile_list[i]);
+    }
+    free(libfile_list);
+
+    // 关闭安装信息文件
+    fclose(install_info);
     return 0;
 }
