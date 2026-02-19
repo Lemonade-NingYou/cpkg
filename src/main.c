@@ -21,6 +21,7 @@
 #include "../include/cpkg.h"
 #include "../include/param.h"
 #include "../include/help.h"
+#include "../include/repo.h"
 
 /**
  * @brief cpkg 一个优秀的c包管底层
@@ -40,7 +41,7 @@ int main(int argc, char *argv[])
 
     // 解析命令行参数
     // 将选项字符串修改为 "hvi:r:m:"，表示 i, r, m 需要参数
-while((opt = getopt_long(argc, argv, "hvi:r:m:", long_options, &option_index)) != -1)
+while((opt = getopt_long(argc, argv, "hvi:r:m:s:f:I:", long_options, &option_index)) != -1)
 {
     switch(opt)
     {
@@ -53,9 +54,11 @@ while((opt = getopt_long(argc, argv, "hvi:r:m:", long_options, &option_index)) !
             return 0;
 
         case 'i':
-            if(check_sudo_privileges() != 0) {
-                cpk_printf(ERROR, "This operation requires sudo privileges.\n");
-                return 1;
+            if (!getenv("CPKG_ALLOW_USER_INSTALL") || strcmp(getenv("CPKG_ALLOW_USER_INSTALL"), "1") != 0) {
+                if(check_sudo_privileges() != 0) {
+                    cpk_printf(ERROR, "This operation requires sudo privileges.\n");
+                    return 1;
+                }
             }
             if (optarg) {
                 install_package(optarg);
@@ -85,6 +88,49 @@ while((opt = getopt_long(argc, argv, "hvi:r:m:", long_options, &option_index)) !
                 make_build_package(optarg);
             } else {
                 cpk_printf(ERROR, "--make-build requires at least one directory name argument\n");
+                less_info_cpkg();
+                return 1;
+            }
+            break;
+        case 's':
+            if (optarg) {
+                repo_search(optarg);
+            } else {
+                cpk_printf(ERROR, "--search requires a query string\n");
+                less_info_cpkg();
+                return 1;
+            }
+            break;
+
+        case 'f':
+            if (optarg) {
+                char dest[MAX_PATH_LEN];
+                snprintf(dest, MAX_PATH_LEN, "%s.cpk", optarg);
+                if (repo_fetch_package_by_name(optarg, dest) == 0) {
+                    cpk_printf(SUCCESS, "Fetched package to %s\n", dest);
+                } else {
+                    cpk_printf(ERROR, "Failed to fetch package %s\n", optarg);
+                }
+            } else {
+                cpk_printf(ERROR, "--fetch requires a package name\n");
+                less_info_cpkg();
+                return 1;
+            }
+            break;
+
+        case 'I':
+            if (!getenv("CPKG_ALLOW_USER_INSTALL") || strcmp(getenv("CPKG_ALLOW_USER_INSTALL"), "1") != 0) {
+                if(check_sudo_privileges() != 0) {
+                    cpk_printf(ERROR, "This operation requires sudo privileges.\n");
+                    return 1;
+                }
+            }
+            if (optarg) {
+                if (repo_install_by_name(optarg) != 0) {
+                    cpk_printf(ERROR, "Remote install failed for %s\n", optarg);
+                }
+            } else {
+                cpk_printf(ERROR, "--repo-install requires a package name\n");
                 less_info_cpkg();
                 return 1;
             }

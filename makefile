@@ -5,7 +5,7 @@ VERSION = 0.0.0.2
 # 编译器设置
 CC = gcc
 CFLAGS = -Wall -Wextra -Werror -O2 -g
-LDFLAGS = -larchive -lcrypto -lssl -lm
+LDFLAGS = -larchive -lcrypto -lssl -lm -lcurl
 
 # 目录设置
 SRC_DIR = src

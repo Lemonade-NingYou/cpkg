@@ -1,0 +1,7 @@
+packet: "testpkg"
+version: "1.0"
+description: "A small test package for cpkg"
+author: "cpkg-test"
+license: "MIT"
+include: {}
+lib: {}

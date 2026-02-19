@@ -138,7 +138,7 @@ int cp_file(const char *src_file, const char *dst_dir)
     dst_fp = fopen(dst_path, "wb");
     if (dst_fp == NULL) goto cleanup;
 
-    char buffer[8192];
+    char buffer[FILE_BUFFER_SIZE];
     size_t n;
     while ((n = fread(buffer, 1, sizeof(buffer), src_fp)) > 0) {
         if (fwrite(buffer, 1, n, dst_fp) != n) goto cleanup;

@@ -23,11 +23,23 @@
 #include <string.h>
 #include <sys/types.h>
 
-#define MAX_PATH_LEN 1024 // 最大路径长度
-#define CONTROL "control" // 控制文件名
-#define META_DIR_NAME "CPKG" // 元数据文件名
-#define WORK_DIR_NAME "cpkg-work" // 工作目录名
-#define INSTALL_DIR "installed" // 安装目录名
+// ====== 路径和大小常数 ======
+#define MAX_PATH_LEN        1024  // 最大路径长度
+#define FILE_BUFFER_SIZE    8192  // 文件 I/O 缓冲区大小
+#define SHA256_HEX_LEN      64    // SHA256 十六进制长度（64 个字符）
+#define INSTALL_PATH_LEN    (MAX_PATH_LEN * 2)  // 安装路径最大长度（2048 字节）
+
+// ====== 目录和文件名 ======
+#define CONTROL             "control"    // 控制文件名
+#define META_DIR_NAME       "CPKG"       // 元数据文件名
+#define WORK_DIR_NAME       "cpkg-work"  // 工作目录名
+#define INSTALL_DIR         "installed"  // 安装目录名
+
+// ====== 包管理相关 ======
+#define CPKG_MAGIC          "CPKG"       // CPK 文件魔数
+#define CPKG_MAGIC_LEN      4            // 魔数长度
+#define CPKG_INSTALL_PREFIX "/usr/local" // 包安装前缀
+#define CPKG_LIB_PATH       "/usr/local/lib/cpkg_packages"  // 包库安装路径
 
 typedef struct {
     char name[MAX_PATH_LEN]; // 包名
@@ -45,16 +57,16 @@ typedef struct {
 } Control_Info;
 
 typedef struct {
-    char magic[4]; // 魔数
-    char hash[65]; // 哈希值
-    char name[MAX_PATH_LEN]; // 包名
-    char version[MAX_PATH_LEN]; // 版本号
-    char description[MAX_PATH_LEN]; // 描述
-    char homepage[MAX_PATH_LEN]; // 主页
-    char author[MAX_PATH_LEN]; // 作者
-    char license[MAX_PATH_LEN]; // 许可证
-    char include_install_path[3*MAX_PATH_LEN]; // 安装路径
-    char lib_install_path[3*MAX_PATH_LEN]; // 构建路径
+    char magic[CPKG_MAGIC_LEN];         // 魔数
+    char hash[SHA256_HEX_LEN + 1];      // 哈希值（64 + '\0'）
+    char name[256];                     // 包名
+    char version[64];                   // 版本号
+    char description[512];              // 描述
+    char homepage[256];                 // 主页
+    char author[128];                   // 作者
+    char license[128];                  // 许可证
+    char include_install_path[INSTALL_PATH_LEN];  // 头文件安装路径
+    char lib_install_path[INSTALL_PATH_LEN];      // 库文件安装路径
 } CPK_Header;
 
 int check_sudo_privileges(void); // 检查是否有root权限

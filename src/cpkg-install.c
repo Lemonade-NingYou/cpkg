@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <unistd.h>
+#define OPENSSL_SUPPRESS_DEPRECATED
+#include <openssl/sha.h>
 #include "../include/help.h"
 #include "../include/cpkg.h"
 
@@ -18,7 +20,7 @@ int install_package(const char *pkg_path)
         cpk_printf(ERROR, "Failed to get absolute path of package: %s\n", pkg_path);
         return 1;
     }
-    printf("Installing package: %s\n", abs_pkg_path);
+    cpk_printf(INFO, "Installing package: %s\n", abs_pkg_path);
 
     FILE *installed_package = fopen(abs_pkg_path, "rb");
     if (installed_package == NULL)
@@ -37,7 +39,7 @@ int install_package(const char *pkg_path)
     }
 
     // 校验 CPK_Header
-    if (memcmp(header.magic, "CPKG", 4) != 0)
+    if (memcmp(header.magic, CPKG_MAGIC, CPKG_MAGIC_LEN) != 0)
     {
         cpk_printf(ERROR, "Invalid package file (bad magic): %s\n", abs_pkg_path);
         fclose(installed_package);
@@ -45,16 +47,11 @@ int install_package(const char *pkg_path)
     }
 
     // 打印头部信息
-    printf("CPK_Header size: %ld\n", sizeof(CPK_Header));
-    printf("Package name: %s\n", header.name);
-    printf("Package hash: %s\n", header.hash);
-    printf("Package version: %s\n", header.version);
-    printf("Package description: %s\n", header.description);
-    printf("Package homepage: %s\n", header.homepage);
-    printf("Package author: %s\n", header.author);
-    printf("Package license: %s\n", header.license);
-    printf("Package include_install_path: %s\n", header.include_install_path);
-    printf("Package lib_install_path: %s\n", header.lib_install_path);
+    cpk_printf(INFO, "CPK_Header size: %ld bytes\n", sizeof(CPK_Header));
+    cpk_printf(INFO, "Package name: %s\n", header.name);
+    cpk_printf(INFO, "Package version: %s\n", header.version);
+    cpk_printf(INFO, "Package description: %s\n", header.description);
+    cpk_printf(INFO, "Package author: %s\n", header.author);
 
     // 获取文件总大小
     struct stat st;
@@ -64,52 +61,49 @@ int install_package(const char *pkg_path)
         fclose(installed_package);
         return 1;
     }
-    printf("Package size: %ld bytes\n", st.st_size);
+    cpk_printf(INFO, "Package size: %ld bytes\n", st.st_size);
 
-    // 读取剩余内容（tar.gz 数据）
+    // 流式计算哈希值（避免一次性加载整个包到内存）
     size_t content_len = st.st_size - sizeof(CPK_Header);
-    char *content = malloc(content_len);
-    if (!content)
-    {
-        cpk_printf(ERROR, "Memory allocation failed\n");
-        fclose(installed_package);
-        return 1;
-    }
+    unsigned char hash_bytes[32];
+    SHA256_CTX ctx;
+    SHA256_Init(&ctx);
 
-    if (fread(content, content_len, 1, installed_package) != 1)
-    {
-        cpk_printf(ERROR, "Failed to read package content: %s\n", abs_pkg_path);
-        free(content);
-        fclose(installed_package);
-        return 1;
+    // 分块读取计算哈希
+    char buffer[FILE_BUFFER_SIZE];
+    size_t bytes_to_read = content_len;
+    while (bytes_to_read > 0) {
+        size_t read_size = (bytes_to_read > FILE_BUFFER_SIZE) ? FILE_BUFFER_SIZE : bytes_to_read;
+        if (fread(buffer, 1, read_size, installed_package) != read_size) {
+            cpk_printf(ERROR, "Failed to read package content: %s\n", abs_pkg_path);
+            fclose(installed_package);
+            return 1;
+        }
+        SHA256_Update(&ctx, (unsigned char*)buffer, read_size);
+        bytes_to_read -= read_size;
     }
+    SHA256_Final(hash_bytes, &ctx);
 
-    // 校验哈希值
-    char *hash = sha256_mem((unsigned char*)content, content_len);
-    if (!hash)
-    {
-        cpk_printf(ERROR, "Failed to compute hash\n");
-        free(content);
-        fclose(installed_package);
-        return 1;
+    // 转换为十六进制字符串
+    char hash[SHA256_HEX_LEN + 1];
+    for (int i = 0; i < 32; i++) {
+        sprintf(hash + (i * 2), "%02x", hash_bytes[i]);
     }
+    hash[SHA256_HEX_LEN] = '\0';
 
+    // 比较哈希值
     if (strcmp(hash, header.hash) != 0)
     {
         cpk_printf(ERROR, "Hash mismatch: expected %s, got %s\n", header.hash, hash);
-        free(hash);
-        free(content);
         fclose(installed_package);
         return 1;
     }
-    free(hash);
-    // 此时 content 已完成使命，可释放（也可保留用于后续解压，但这里我们用文件流直接解压）
-    free(content);
+    cpk_printf(SUCCESS, "Hash verification passed\n");
 
     // 解压包
     char extract_path[MAX_PATH_LEN];
     snprintf(extract_path, MAX_PATH_LEN, "%s/%s", WORK_DIR_NAME, INSTALL_DIR);
-    printf("Extracting package to: %s\n", extract_path);
+    cpk_printf(INFO, "Extracting package to: %s\n", extract_path);
     if (mkdir_p(extract_path, 0755) != 0 && errno != EEXIST)
     {
         cpk_printf(ERROR, "Failed to create directory: %s\n", extract_path);
@@ -117,10 +111,7 @@ int install_package(const char *pkg_path)
         return 1;
     }
 
-    // 将文件指针重新定位到头部之后（因为前面已读取 content，但未改变文件指针位置？注意 fread 已经移动了指针）
-    // 实际上 fread 读取 content 后，文件指针已位于末尾。我们需要重新打开或重新定位到头部之后。
-    fseek(installed_package, 0, SEEK_SET);
-    // 跳过头部
+    // 文件指针已在末尾，重新定位到包数据开始处
     if (fseek(installed_package, sizeof(CPK_Header), SEEK_SET) != 0)
     {
         cpk_printf(ERROR, "Failed to seek to package data\n");
@@ -137,10 +128,10 @@ int install_package(const char *pkg_path)
     }
 
     fclose(installed_package);
-    printf("Package installed successfully.\n");
+    cpk_printf(SUCCESS, "Package installed successfully\n");
 
     // 列出解压后的文件（简单遍历）
-    printf("Package contents:\n");
+    cpk_printf(INFO, "Package contents:\n");
     DIR *dir = opendir(extract_path);
     if (dir)
     {
@@ -149,7 +140,7 @@ int install_package(const char *pkg_path)
         {
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
                 continue;
-            printf("  %s\n", entry->d_name);
+            printf("  ├─ %s\n", entry->d_name);
         }
         closedir(dir);
     }

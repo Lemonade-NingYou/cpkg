@@ -159,8 +159,16 @@ int make_build_package(const char *package_path_dir)
         free(tgz_malloc_file);
         goto error;
     }
-    strncpy(header->hash, hash, 64);
-    header->hash[64] = '\0';
+    // 验证哈希值长度并安全复制
+    if (strlen(hash) != 64) {
+        cpk_printf(ERROR, "Error: invalid hash length (expected 64, got %zu).\n", strlen(hash));
+        free(hash);
+        free(header);
+        free(tgz_malloc_file);
+        goto error;
+    }
+    strncpy(header->hash, hash, sizeof(header->hash) - 1);
+    header->hash[sizeof(header->hash) - 1] = '\0';
 
     // 写入 .cpk 文件
     printf("Is writing header file...\n");

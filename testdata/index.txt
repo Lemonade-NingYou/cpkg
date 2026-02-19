@@ -1,0 +1,1 @@
+testpkg|1.0|file:///home/montgomery/项目/cpkg/testdata/pkgsrc/testpkg/testpkg-1.0.cpk|4336a6116af9c5ade6dc0404a2446795c10c0d94dcf6028300c39e3faf14011b

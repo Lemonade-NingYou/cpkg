@@ -1,0 +1,65 @@
+.TH CPKG 1 "2026-02-19" "cpkg 0.0.0.2" "User Commands"
+.SH NAME
+cpkg \- C package manager (simple CPK format)
+.SH SYNOPSIS
+.B cpkg
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+\fBcpkg\fR 是一个轻量的 C 语言包管理工具，使用自定义的 CPK 包格式。它支持本地包构建、安装、卸载以及从远程仓库搜索与下载包。
+.SH OPTIONS
+.TP
+.B \-h, \--help
+显示帮助信息。
+.TP
+.B \-v, \--version
+显示版本信息。
+.TP
+.B \-i, \--install [FILE]
+从本地 CPK 文件安装包（默认需要 root 权限）。
+.TP
+.B \-r, \--remove [PACKAGE]
+卸载已安装的包（需要 root 权限）。
+.TP
+.B \-m, \--make-build=DIR
+从给定目录构建 CPK 包（目录应包含 CPK/control 元数据）。
+.TP
+.B \--search=QUERY
+在远程索引中按关键字搜索包。索引默认位置由环境变量 \fBCPKG_INDEX_URL\fR 指定。
+.TP
+.B \--fetch=PACKAGE
+从远程仓库下载指定包到当前目录（验证 SHA256 后保存为 PACKAGE.cpk）。
+.TP
+.B \--repo-install=PACKAGE
+从远程仓库下载并安装指定包（默认需要 root 权限）。
+.SH ENVIRONMENT
+.TP
+.B CPKG_INDEX_URL
+远程索引文件的 URL（例如: https://example.com/cpkg/index.txt）。可以使用 file:/// 本地文件以便测试。
+.TP
+.B CPKG_ALLOW_USER_INSTALL
+若设为 \fB1\fR，则允许非 root 用户执行安装或远程安装（仅用于测试和开发）。
+.SH INDEX FORMAT
+简单的文本索引格式：每行一条记录，字段以竖线分隔：
+.IP
+\fBname|version|url|sha256\fR
+.SH EXAMPLES
+.TP
+.B 构建本地包
+.sp
+cpkg --make-build=./path/to/package_source
+.TP
+.B 搜索远程包
+.sp
+CPKG_INDEX_URL=file:///path/to/index.txt cpkg --search testpkg
+.TP
+.B 下载并安装远程包（测试模式，无需 sudo）
+.sp
+CPKG_INDEX_URL=file:///path/to/index.txt CPKG_ALLOW_USER_INSTALL=1 cpkg --repo-install testpkg
+.SH FILES
+.TP
+.B CPKG/control
+包的元数据文件（位于包源目录下），键名包括: packet, version, description, author, license, include, lib 等。
+.SH AUTHOR
+lemonade_NingYou
+.SH BUGS
+这是一个实验性工具；对于生产使用请谨慎并在安全环境中验证包来源与哈希。

@@ -21,12 +21,14 @@
 // 帮助信息字符串声明
 extern const char *help_message; // 帮助信息字符串
 
-// 彩色输出定义
-#define CPKG_NAME "\033[1;37mcpkg:\033[0m"    // 软件包管理器名称
-#define ERROR "\033[1;31mERROR:\033[0m"        // 错误标识
-#define WARNING "\033[1;33mWARNING:\033[0m"      // 警告标识
-#define INFO "\033[1;32mINFORMATION:\033[0m"         // 信息标识
-#define VISION "class 0.0.0.2"         // 版本标识
+// 彩色打印宏定义
+#define CPKG_NAME "\033[1;37mcpkg:\033[0m"           // 软件包管理器名称（白色）
+#define ERROR "\033[1;31mERROR:\033[0m"             // 错误信息（红色）
+#define WARNING "\033[1;33mWARNING:\033[0m"         // 警告信息（黄色）
+#define INFO "\033[1;32mINFORMATION:\033[0m"        // 信息提示（绿色）
+#define DEBUG "\033[1;36mDEBUG:\033[0m"             // 调试信息（青色）
+#define SUCCESS "\033[1;32mSUCCESS:\033[0m"         // 成功信息（绿色）
+#define VISION "class 0.0.0.2"                       // 版本标识
 
 // 架构信息定义，用于判断系统架构
 #if defined(__amd64__) || defined(__x86_64__) || defined(_M_X64) || defined(_M_AMD64)
