@@ -13,6 +13,7 @@
 #include <dirent.h>
 #include <archive.h>
 #include <archive_entry.h>
+#define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/sha.h>
 #include "../include/cpkg.h"
 #include "../include/help.h"  // 假设 cpk_printf 在此定义

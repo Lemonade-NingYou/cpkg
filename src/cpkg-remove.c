@@ -27,5 +27,6 @@
  */
 int remove_package(const char *pkg_name) 
 {
+    (void)pkg_name;  // 标记参数为已使用，消除编译警告
     return 0;
 }

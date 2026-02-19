@@ -71,7 +71,7 @@ extern const char *help_message; // 帮助信息字符串
     }
 
 #define cpkg_version() \
-    printf("Cpkg Package Management ProgramVersion %s(amd64).\n"\
+    printf("Cpkg Package Management Program Version %s (%s).\n"\
         "This program is free software; for copying conditions, see the GNU General Public License \n"\
         "version 3 or later. This program comes with ABSOLUTELY NO WARRANTY.\n", VISION, ARCH);
 

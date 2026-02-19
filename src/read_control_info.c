@@ -398,7 +398,7 @@ Control_Info *read_control_info(FILE *fp)
                 {
                     // 无通配符，作为单个文件
                     count = 1;
-                    files = (char **)malloc(sizeof(char *));
+                    files = (char **)malloc(count * sizeof(char *));
                     if (files == NULL)
                         goto error;
                     files[0] = strdup(value);

@@ -29,7 +29,6 @@ int main(int argc, char *argv[])
 {
     int opt; // 选项
     int option_index = 0; // 选项索引
-    int opterr = 0; // 错误信息
 
     // 处理命令行参数
     if(argc < 2)
