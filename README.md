@@ -5,13 +5,13 @@
   
   ![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
   ![Platform](https://img.shields.io/badge/platform-Linux-green.svg)
-  ![Version](https://img.shields.io/badge/version-class0.0.1.3-orange.svg)
+  ![Version](https://img.shields.io/badge/version-1.0-orange.svg)
 
 **A lightweight C package manager**
 </div>
 
 ## language
-English | [中文](readme/md-zh_CN.md)
+English | [中文](readme/md-zh_CN.md) | [Deutsch](readme/md-de_DE.md)
 ## Introduction
 
 cpkg is a lightweight C package manager that allows you to easily install, update, and remove C packages. It is designed to be simple, easy to use, and cross-platform.
@@ -32,6 +32,7 @@ To get started with cpkg, you can follow the instructions below:
 2. Install packages by running the `cpkg -i` command.
 3. Build packages by running the `cpkg -m` command.
 4. Remove packages by running the `cpkg -r` command.
+5. list installed packages by running the `cpkg -l` command.
 
 ## Contributing
 

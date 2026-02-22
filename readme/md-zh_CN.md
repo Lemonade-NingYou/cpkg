@@ -5,13 +5,13 @@
   
   ![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
   ![Platform](https://img.shields.io/badge/platform-Linux-green.svg)
-  ![Version](https://img.shields.io/badge/version-class0.0.1.3-orange.svg)
+  ![Version](https://img.shields.io/badge/version-1.0-orange.svg)
 
 **一个轻量级的 C 包管理器**
 </div>
 
 ## 语言
-[English](README.md) | 中文
+[English](../README.md) | 中文 | [Deutsch](md-de_DE.md)
 
 ## 介绍
 
@@ -32,6 +32,7 @@ cpkg 目前还不能用于一般用途，但是你可以尝试一下。
 2. 安装包请运行 `cpkg -i` 命令。
 3. 构建包请运行 `cpkg -m` 命令。
 4. 删除包请运行 `cpkg -r` 命令。
+5. 查看已包信息请运行 `cpkg -l` 命令。
 
 ## 贡献
 
