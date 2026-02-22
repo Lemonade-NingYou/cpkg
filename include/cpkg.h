@@ -89,5 +89,6 @@ off_t get_file_size(const char *path);            /**< 获取文件大小 */
 int install_package(const char *pkg_path);        /**< 安装 .cpk 包 */
 int remove_package(const char *pkg_name);         /**< 移除已安装的包 */
 int make_build_package(const char *package_path_dir); /**< 构建包（从目录生成 .cpk） */
+int cpkg_list(void);                            /**< 列出已安装的包 */
 
 #endif /* CPKG_H */

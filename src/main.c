@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 
     // 解析命令行参数
     // 将选项字符串修改为 "hvi:r:m:"，表示 i, r, m 需要参数
-while((opt = getopt_long(argc, argv, "hvi:r:m:", long_options, &option_index)) != -1)
+while((opt = getopt_long(argc, argv, "hlvi:r:m:", long_options, &option_index)) != -1)
 {
     switch(opt)
     {
@@ -89,6 +89,10 @@ while((opt = getopt_long(argc, argv, "hvi:r:m:", long_options, &option_index)) !
                 return 1;
             }
             break;
+
+        case 'l':
+            cpkg_list();
+            return 0;
             
         default:
             cpk_printf(ERROR, "Invalid option: -%c\n", opt);

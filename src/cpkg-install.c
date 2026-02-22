@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2025 lemonade_NingYou
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 #include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -91,14 +108,81 @@ int install_package(const char *pkg_path)
         return 1;
     }
     free(hash);
-    // 此时 content 已完成使命，可释放（也可保留用于后续解压，但这里我们用文件流直接解压）
-    free(content);
+    free(content);  // content 已完成使命，可释放
 
-    if(tf_choose("Do you want to install this package?"))
-    {
+    /* ==================== 重复安装检查 ==================== */
+    char installed_txt_path[MAX_PATH_LEN];
+    snprintf(installed_txt_path, sizeof(installed_txt_path), "%s/installed.txt", WORK_DIR_NAME);
+
+    FILE *check_fp = fopen(installed_txt_path, "rb");
+    int duplicate = 0;
+
+    if (check_fp) {
+        CPK_Header existing_header;
+        int inc_count, lib_count;
+        char **inc_list = NULL, **lib_list = NULL;
+        while (1) {
+            int ret = read_install_file(check_fp, &existing_header, &inc_count, &inc_list,
+                                        &lib_count, &lib_list);
+            if (ret != 0) {
+                if (feof(check_fp)) break;
+                cpk_printf(ERROR, "Error reading installed packages database: %s\n", strerror(errno));
+                fclose(check_fp);
+                fclose(installed_package);
+                return 1;
+            }
+            if (strcmp(existing_header.name, header.name) == 0) {
+                duplicate = 1;
+                // 释放本次列表
+                if (inc_list) {
+                    for (int i = 0; i < inc_count; i++) free(inc_list[i]);
+                    free(inc_list);
+                }
+                if (lib_list) {
+                    for (int i = 0; i < lib_count; i++) free(lib_list[i]);
+                    free(lib_list);
+                }
+                break;
+            }
+            // 释放列表
+            if (inc_list) {
+                for (int i = 0; i < inc_count; i++) free(inc_list[i]);
+                free(inc_list);
+            }
+            if (lib_list) {
+                for (int i = 0; i < lib_count; i++) free(lib_list[i]);
+                free(lib_list);
+            }
+        }
+        fclose(check_fp);
+    } else if (errno != ENOENT) {
+        cpk_printf(ERROR, "Failed to open installed packages database: %s\n", strerror(errno));
         fclose(installed_package);
         return 1;
     }
+
+    if (duplicate) {
+        cpk_printf(WARNING, "Package '%s' is already installed.\n", header.name);
+        if (tf_choose("Do you want to reinstall (remove old and install new)?")) {
+            fclose(installed_package);
+            cpk_printf(INFO, "Installation cancelled.\n");
+            return 1;
+        }
+        // 尝试卸载旧包
+        if (remove_package(header.name) != 0) {
+            cpk_printf(ERROR, "Failed to remove existing package '%s'.\n", header.name);
+            fclose(installed_package);
+            return 1;
+        }
+        cpk_printf(INFO, "Old package removed.\n");
+    } else {
+        // 无重复，询问用户是否安装
+        if (tf_choose("Do you want to install this package?")) {
+            fclose(installed_package);
+            return 1;
+        }
+    }
+    /* ==================== 检查结束 ==================== */
 
     // 解压包
     char extract_path[MAX_PATH_LEN];
@@ -111,10 +195,8 @@ int install_package(const char *pkg_path)
         return 1;
     }
 
-    // 将文件指针重新定位到头部之后（因为前面已读取 content，但未改变文件指针位置？注意 fread 已经移动了指针）
-    // 实际上 fread 读取 content 后，文件指针已位于末尾。我们需要重新打开或重新定位到头部之后。
+    // 将文件指针重新定位到头部之后
     fseek(installed_package, 0, SEEK_SET);
-    // 跳过头部
     if (fseek(installed_package, sizeof(CPK_Header), SEEK_SET) != 0)
     {
         cpk_printf(ERROR, "Failed to seek to package data\n");
@@ -204,7 +286,7 @@ int install_package(const char *pkg_path)
         return 1;
     }
 
-        // 释放文件列表
+    // 释放文件列表
     for (int i = 0; i < includefiles; i++)
     {
         free(includefile_list[i]);

@@ -23,5 +23,6 @@ struct option long_options[] = {
     {"install", optional_argument, 0, 'i'},
     {"remove", optional_argument, 0, 'r'},
     {"make-build", optional_argument, 0, 'm'},
+    {"list", no_argument, 0, 'l'},
     {0, 0, 0, 0}
 };
