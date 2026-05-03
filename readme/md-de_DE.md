@@ -1,7 +1,7 @@
 # cpkg – Ein leichtgewichtiger C-Paketmanager
 
 <div align="center">
-  <img src="" alt="cpkg Icon" width="200">
+  <img src="image/cpkg icon.jpg" alt="cpkg Icon" width="200">
   
   ![Lizenz](https://img.shields.io/badge/license-GPLv3-blue.svg)
   ![Plattform](https://img.shields.io/badge/platform-Linux-green.svg)
