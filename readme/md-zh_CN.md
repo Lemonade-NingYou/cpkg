@@ -1,13 +1,14 @@
 # cpkg - 一个轻量级的 C 包管理器
 
 <div align="center">
-  <img src="" alt="cpkg Icon" width="200">
+  <img src="../image/cpkg icon.jpg" alt="cpkg Icon" width="200">
   
   ![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
   ![Platform](https://img.shields.io/badge/platform-Linux-green.svg)
   ![Version](https://img.shields.io/badge/version-1.0-orange.svg)
+  ![Status](https://img.shields.io/badge/status-重构中-yellow.svg)
 
-**一个轻量级的 C 包管理器**
+**一个轻量级的 C 包管理器 – 正在进行底层重构**
 </div>
 
 ## 语言
@@ -15,33 +16,72 @@
 
 ## 介绍
 
-cpkg 是一款轻量级的 C 包管理器，它允许你轻松地安装、更新和删除 C 包。它的设计目标是简单、易用、跨平台。
+cpkg 是一个轻量级的 C 包管理器，旨在简化 C 库和头文件的安装、更新和卸载。
 
-cpkg 目前处于开发初期，还不能用于一般用途。但是，你可以关注 [cpkg GitHub 仓库](https://github.com/chenhao2345/cpkg) 的进度。
+本仓库是 cpkg 的**底层重构版本**，代码结构已重新组织，构建流程正在重写，以提高模块化、安全性和性能。
+
+目前，**构建（build）** 功能已完整实现，安装（install）子系统正在开发中，尚不可用。
 
 ## 特性与目标
 
-- 简单易用的命令行界面
-- 跨平台支持（Windows、Linux、macOS）
+- **构建**：从源码目录构建 `.cpl` 包文件（已完成）
+- **安装**：将 `.cpl` 包安装到系统中（开发中）
+- 简单的命令行界面
+- 跨平台支持（Linux、macOS、Windows – 计划中）
+
+## 项目状态
+
+| 功能         | 状态                  |
+|--------------|-----------------------|
+| `build`      | ✅ 已完成             |
+| `install`    | 🚧 开发中             |
+| `remove`     | ❌ 未开始             |
+| `list`       | ❌ 未开始             |
 
 ## 安装与使用
 
-cpkg 目前还不能用于一般用途，但是你可以尝试一下。
+### 从源码构建 cpkg
 
-1. 安装 cpkg 请按照 [cpkg GitHub 仓库](https://github.com/chenhao2345/cpkg) 中的说明进行安装。
-2. 安装包请运行 `cpkg -i` 命令。
-3. 构建包请运行 `cpkg -m` 命令。
-4. 删除包请运行 `cpkg -r` 命令。
-5. 查看已包信息请运行 `cpkg -l` 命令。
+```bash
+git clone https://github.com/chenhao2345/cpkg.git
+cd cpkg
+mkdir build && cd build
+cmake ..
+make
+sudo make install
+```
+
+### 使用方法
+
+当前唯一完全支持的命令是：
+
+```bash
+cpkg -b <构建目录>
+```
+
+该命令会读取指定目录下的 `config.txt`，打包指定的库和头文件，并生成一个 `.cpl` 文件。
+
+安装命令部分实现，但**尚未可用**：
+
+```bash
+cpkg -i <package.cpl>   # (未完成)
+```
+
+其他选项：
+
+```bash
+cpkg -h                 # 显示帮助
+cpkg -V                 # 显示版本号
+```
 
 ## 贡献
 
-如果您想为 cpkg 做出贡献，可以按照以下步骤：
+如果您想为 cpkg 做出贡献，请按以下步骤操作：
 
 1. Fork [cpkg GitHub 仓库](https://github.com/chenhao2345/cpkg)。
-2. 创建一个新的分支用于你的修改。
+2. 创建一个新的分支用于您的修改。
 3. 进行修改。
-4. 测试你的修改。
+4. 测试您的修改。
 5. 提交一个 pull request 到 cpkg 仓库的主分支。
 
 ## 许可证

@@ -6,8 +6,9 @@
   ![Lizenz](https://img.shields.io/badge/license-GPLv3-blue.svg)
   ![Plattform](https://img.shields.io/badge/platform-Linux-green.svg)
   ![Version](https://img.shields.io/badge/version-1.0-orange.svg)
+  ![Status](https://img.shields.io/badge/status-Refactoring-yellow.svg)
 
-**Ein leichtgewichtiger C-Paketmanager**
+**Ein leichtgewichtiger C-Paketmanager – derzeit in einer großen Überarbeitung**
 </div>
 
 ## Sprache
@@ -15,24 +16,63 @@
 
 ## Einführung
 
-cpkg ist ein leichtgewichtiger C-Paketmanager, mit dem Sie C-Pakete einfach installieren, aktualisieren und entfernen können. Es ist einfach, benutzerfreundlich und plattformübergreifend konzipiert.
+cpkg ist ein leichtgewichtiger C-Paketmanager, der die Installation, Aktualisierung und Entfernung von C-Bibliotheken und Kopfdateien vereinfachen soll.
 
-cpkg befindet sich noch in einem frühen Entwicklungsstadium und ist noch nicht für den allgemeinen Gebrauch geeignet. Sie können den Fortschritt jedoch im [cpkg GitHub-Repository](https://github.com/chenhao2345/cpkg) verfolgen.
+Dieses Repository enthält eine **Low-Level-Überarbeitung** des ursprünglichen cpkg. Die Codebasis wurde neu organisiert, und die Build-Pipeline wird für bessere Modularität, Sicherheit und Leistung neu geschrieben.
+
+Derzeit ist nur die **Paketerstellung (build)** vollständig implementiert. Das Installationssubsystem befindet sich in aktiver Entwicklung und ist noch nicht funktionsfähig.
 
 ## Funktionen und Ziele
 
-- Einfache, benutzerfreundliche Befehlszeilenschnittstelle
-- Plattformübergreifende Unterstützung (Windows, Linux, macOS)
+- **Erstellen** eines Pakets aus einem Quellverzeichnis in eine `.cpl`-Datei (fertig)
+- **Installieren** eines `.cpl`-Pakets in das System (in Arbeit)
+- Einfache Kommandozeilenschnittstelle
+- Plattformübergreifende Unterstützung (Linux, macOS, Windows – geplant)
+
+## Projektstatus
+
+| Funktion      | Status                  |
+|---------------|-------------------------|
+| `build`       | ✅ Abgeschlossen        |
+| `install`     | 🚧 In Entwicklung       |
+| `remove`      | ❌ Nicht begonnen       |
+| `list`        | ❌ Nicht begonnen       |
 
 ## Erste Schritte
 
-Um mit cpkg zu beginnen, folgen Sie den nachstehenden Anweisungen:
+### cpkg aus dem Quellcode erstellen
 
-1. Installieren Sie cpkg gemäß der Anleitung im [cpkg GitHub-Repository](https://github.com/chenhao2345/cpkg).
-2. Installieren Sie Pakete mit dem Befehl `cpkg -i`.
-3. Erstellen Sie Pakete mit dem Befehl `cpkg -m`.
-4. Entfernen Sie Pakete mit dem Befehl `cpkg -r`.
-5. Listen Sie installierte Pakete mit dem Befehl `cpkg -l` auf.
+```bash
+git clone https://github.com/chenhao2345/cpkg.git
+cd cpkg
+mkdir build && cd build
+cmake ..
+make
+sudo make install
+```
+
+### Verwendung
+
+Derzeit ist nur der folgende Befehl vollständig unterstützt:
+
+```bash
+cpkg -b <Build-Verzeichnis>
+```
+
+Dieser liest die `config.txt` aus dem angegebenen Verzeichnis, packt die angegebenen Bibliotheken und Kopfdateien und erzeugt eine `.cpl`-Datei.
+
+Der Installationsbefehl ist teilweise implementiert, aber **noch nicht funktionsfähig**:
+
+```bash
+cpkg -i <package.cpl>   # (noch nicht bereit)
+```
+
+Weitere Optionen:
+
+```bash
+cpkg -h                 # Hilfe anzeigen
+cpkg -V                 # Version anzeigen
+```
 
 ## Mitwirken
 

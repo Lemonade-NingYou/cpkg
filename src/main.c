@@ -1,110 +1,71 @@
-/*
- * Copyright (C) 2025 lemonade_NingYou
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <getopt.h>
-#include "../include/cpkg.h"
-#include "../include/param.h"
-#include "../include/help.h"
 
-/**
- * @brief cpkg 一个优秀的c包管底层
- */
-int main(int argc, char *argv[])
-{
-    int opt; // 选项
-    int option_index = 0; // 选项索引
+#include "openapi.h"   // 假设其中声明了 build() 和 install()
+#include "outerror.h"  // 假设其中声明了 ErrorInfo 枚举和 ErrorArg()
 
-    // 处理命令行参数
-    if(argc < 2)
-    {
-        cpk_printf(ERROR, "No command specified.\n");
-        less_info_cpkg();
-        return 1;
+char* version_string = "1.0.0";  // 版本号字符串
+
+static struct option long_options[] = {
+    {"install", required_argument, 0, 'i'}, // 新增 --install
+    {"build",   required_argument, 0, 'b'},
+    {"help",    no_argument,       0, 'h'},
+    {"version", no_argument,       0, 'V'},
+    {0, 0, 0, 0}
+};
+
+int main(int argc, char* argv[]) {
+    int opt;
+    int option_index = 0;
+    char* filename = NULL;
+
+    while ((opt = getopt_long(argc, argv, "i:b:hV", long_options, &option_index)) != -1) {
+        switch (opt) {
+            case 'i': {
+                filename = optarg;
+                int install_result = install(filename);
+                if (install_result != 0) {
+                    ErrorArg(install_result);
+                    return 1;
+                }
+                break;
+            }
+            case 'b': {
+                filename = optarg;
+                int build_result = build(filename);
+                if (build_result != 0) {
+                    ErrorArg(build_result);
+                    return 1;
+                }
+                break;
+            }
+            case 'h':
+                printf("Usage: %s -i <filename> | -b <filename> [-h] [-V]\n", argv[0]);
+                printf("  -i, --install <file>   Install package\n");
+                printf("  -b, --build <file>     Build package\n");
+                printf("  -h, --help             Show this help\n");
+                printf("  -V, --version          Show version\n");
+                return 0;
+            case 'V':
+                printf("Version %s\n", version_string);
+                return 0;
+            case '?':  // 未知选项或缺少参数
+                fprintf(stderr, "Usage: %s -i <filename> | -b <filename> [-h] [-V]\n", argv[0]);
+                return 1;
+            default:
+                fprintf(stderr, "cpkg: internal error: impossible condition detected (but here we are)\n");
+                fprintf(stderr, "This is a bug. Please report it to <bug-cpkg@UFO.org>.\n");
+                fprintf(stderr, "Attach a screenshot of your face at the exact moment of failure.\n");
+                fprintf(stderr, "Aborted (core dumped, probably into your keyboard)\n");
+                return 1;
+        }
     }
 
-    // 解析命令行参数
-    // 将选项字符串修改为 "hvi:r:m:"，表示 i, r, m 需要参数
-while((opt = getopt_long(argc, argv, "hlvi:r:m:", long_options, &option_index)) != -1)
-{
-    switch(opt)
-    {
-        case 'h':
-            full_info_cpkg();
-            return 0;
-
-        case 'v':
-            cpkg_version();
-            return 0;
-
-        case 'i':
-            if(check_sudo_privileges() != 0) {
-                cpk_printf(ERROR, "This operation requires sudo privileges.\n");
-                return 1;
-            }
-            if (optarg) {
-                install_package(optarg);
-            } else {
-                cpk_printf(ERROR, "--install requires at least one package file as an argument\n");
-                less_info_cpkg();
-                return 1;
-            }
-            break;
-
-        case 'r':
-            if(check_sudo_privileges() != 0) {
-                cpk_printf(ERROR, "This operation requires sudo privileges.\n");
-                return 1;
-            }
-            if (optarg) {
-                remove_package(optarg);
-            } else {
-                cpk_printf(ERROR, "--remove needs at least one package name argument\n");
-                less_info_cpkg();
-                return 1;
-            }
-            break;
-
-        case 'm':
-            if (optarg) {
-                make_build_package(optarg);
-            } else {
-                cpk_printf(ERROR, "--make-build requires at least one directory name argument\n");
-                less_info_cpkg();
-                return 1;
-            }
-            break;
-
-        case 'l':
-            cpkg_list();
-            return 0;
-            
-        default:
-            cpk_printf(ERROR, "Invalid option: -%c\n", opt);
-            less_info_cpkg();
-            return 1;
+    // 处理剩余非选项参数（如果有）
+    if (optind < argc) {
+        fprintf(stderr, "Warning: extra arguments ignored\n");
     }
-}
 
-// 处理非选项参数（备用方案）
-if (optind < argc) {
-    // 如果有非选项参数，可以作为命令处理
-    cpk_printf(INFO, "Non-option argument: %s\n", argv[optind]);
-}
     return 0;
 }
