@@ -5,10 +5,10 @@
   
   ![Lizenz](https://img.shields.io/badge/license-GPLv3-blue.svg)
   ![Plattform](https://img.shields.io/badge/platform-Linux-green.svg)
-  ![Version](https://img.shields.io/badge/version-1.0-orange.svg)
-  ![Status](https://img.shields.io/badge/status-Refactoring-yellow.svg)
+  ![Version](https://img.shields.io/badge/version-2.0.0-brightgreen.svg)
+  ![Status](https://img.shields.io/badge/status-stabil-brightgreen.svg)
 
-**Ein leichtgewichtiger C-Paketmanager – derzeit in einer großen Überarbeitung**
+**Ein leichtgewichtiger C-Paketmanager – einfach bauen und installieren**
 </div>
 
 ## Sprache
@@ -16,29 +16,37 @@
 
 ## Einführung
 
-cpkg ist ein leichtgewichtiger C-Paketmanager, der die Installation, Aktualisierung und Entfernung von C-Bibliotheken und Kopfdateien vereinfachen soll.
+cpkg ist ein leichtgewichtiger C-Paketmanager, der das Paketieren, Installieren und Verwalten von C-Bibliotheken und Kopfdateien vereinfacht.
 
-Dieses Repository enthält eine **Low-Level-Überarbeitung** des ursprünglichen cpkg. Die Codebasis wurde neu organisiert, und die Build-Pipeline wird für bessere Modularität, Sicherheit und Leistung neu geschrieben.
+Dieses Repository enthält eine **vollständig überarbeitete** Version von cpkg mit modularer Architektur, Integritätsprüfung (SHA‑256) und inkrementellen Builds.
 
-Derzeit ist nur die **Paketerstellung (build)** vollständig implementiert. Das Installationssubsystem befindet sich in aktiver Entwicklung und ist noch nicht funktionsfähig.
+Die Unterbefehle **build** und **install** sind voll funktionsfähig. Die Deinstallation ist für die nächste Version geplant.
 
-## Funktionen und Ziele
+## Funktionen
 
-- **Erstellen** eines Pakets aus einem Quellverzeichnis in eine `.cpl`-Datei (fertig)
-- **Installieren** eines `.cpl`-Pakets in das System (in Arbeit)
-- Einfache Kommandozeilenschnittstelle
-- Plattformübergreifende Unterstützung (Linux, macOS, Windows – geplant)
+- **Build** – Erstellt aus einem Quellverzeichnis eine eigenständige `.cpl`-Datei.
+- **Install** – Überprüft und installiert `.cpl`-Pakete in Systemverzeichnisse.
+- **Integrität** – SHA‑256-Hash schützt vor Beschädigung oder Manipulation.
+- **Inkrementell** – Nur geänderte Dateien werden beim Bau kopiert (spart Zeit).
+- **Sauber** – Löscht temporäre Dateien nach der Installation automatisch.
+- **Manifest** – Speichert jede installierte Datei für spätere Deinstallation.
 
 ## Projektstatus
 
-| Funktion      | Status                  |
-|---------------|-------------------------|
-| `build`       | ✅ Abgeschlossen        |
-| `install`     | 🚧 In Entwicklung       |
-| `remove`      | ❌ Nicht begonnen       |
-| `list`        | ❌ Nicht begonnen       |
+| Funktion       | Status                  |
+|----------------|-------------------------|
+| `build`        | ✅ Abgeschlossen        |
+| `install`      | ✅ Abgeschlossen        |
+| `remove`       | ❌ Nicht begonnen       |
+| `list`         | ❌ Nicht begonnen       |
 
 ## Erste Schritte
+
+### Abhängigkeiten
+
+```bash
+sudo apt install libyaml-dev libarchive-dev libssl-dev libcjson-dev
+```
 
 ### cpkg aus dem Quellcode erstellen
 
@@ -51,38 +59,41 @@ make
 sudo make install
 ```
 
-### Verwendung
+## Konfiguration (`config.txt`)
 
-Derzeit ist nur der folgende Befehl vollständig unterstützt:
+Die Konfigurationsdatei verwendet YAML. Ein ausführliches Beispiel und alle Felder sind im [englischen README](../README.md) beschrieben.
 
-```bash
-cpkg -b <Build-Verzeichnis>
-```
+## Verwendung
 
-Dieser liest die `config.txt` aus dem angegebenen Verzeichnis, packt die angegebenen Bibliotheken und Kopfdateien und erzeugt eine `.cpl`-Datei.
-
-Der Installationsbefehl ist teilweise implementiert, aber **noch nicht funktionsfähig**:
+### Paket bauen
 
 ```bash
-cpkg -i <package.cpl>   # (noch nicht bereit)
+cpkg -b /pfad/zum/projekt
 ```
+
+Erzeugt `<PocketName>-<version>.cpl`.
+
+### Paket installieren
+
+```bash
+sudo cpkg -i paketname.cpl
+```
+
+Installiert Bibliotheken und Header in die Systemverzeichnisse und erstellt ein Manifest unter `/var/cache/cpkg/<PocketName>.json`.
 
 Weitere Optionen:
 
 ```bash
-cpkg -h                 # Hilfe anzeigen
-cpkg -V                 # Version anzeigen
+cpkg -h   # Hilfe
+cpkg -V   # Version
 ```
 
 ## Mitwirken
 
-Wenn Sie zu cpkg beitragen möchten, gehen Sie wie folgt vor:
-
-1. Forken Sie das [cpkg GitHub-Repository](https://github.com/chenhao2345/cpkg).
-2. Erstellen Sie einen neuen Branch für Ihre Änderungen.
-3. Nehmen Sie Ihre Änderungen vor.
-4. Testen Sie Ihre Änderungen.
-5. Erstellen Sie einen Pull-Request an den Hauptzweig des cpkg-Repositorys.
+1. Fork des [cpkg GitHub-Repositorys](https://github.com/chenhao2345/cpkg).
+2. Neuen Branch für Ihre Änderungen erstellen.
+3. Änderungen vornehmen und testen.
+4. Pull-Request an den Hauptzweig senden.
 
 ## Lizenz
 

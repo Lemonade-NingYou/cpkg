@@ -5,7 +5,7 @@
 #include "openapi.h"   // 假设其中声明了 build() 和 install()
 #include "outerror.h"  // 假设其中声明了 ErrorInfo 枚举和 ErrorArg()
 
-char* version_string = "1.0.0";  // 版本号字符串
+char* version_string = "2.0.0";  // 版本号字符串
 
 static struct option long_options[] = {
     {"install", required_argument, 0, 'i'},  // 新增 --install
