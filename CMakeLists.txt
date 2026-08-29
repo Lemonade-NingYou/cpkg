@@ -1,16 +1,12 @@
 cmake_minimum_required(VERSION 3.12)
 project(Cpkg VERSION 1.0 LANGUAGES C)
 
-# ===================== 编译选项 =====================
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)          # 严格使用标准 C，不启用 GNU 扩展
+set(CMAKE_C_EXTENSIONS OFF)
 
-# ===================== 头文件搜索路径 =====================
-# 项目自身的 include 目录（全局）
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# ===================== 源文件列表 =====================
 set(SOURCES
     src/main.c
     src/build.c
@@ -19,21 +15,50 @@ set(SOURCES
     src/install.c
 )
 
-# ===================== 生成可执行文件 =====================
 add_executable(cpkg ${SOURCES})
 
-# ===================== 依赖 libarchive =====================
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBARCHIVE REQUIRED libarchive)
+pkg_check_modules(LIBYAML REQUIRED yaml-0.1)
+pkg_check_modules(OPENSSL REQUIRED openssl)
 
-# 将 libarchive 的头文件路径和库链接到目标 cpkg
-target_include_directories(cpkg PRIVATE ${LIBARCHIVE_INCLUDE_DIRS})
-target_link_libraries(cpkg ${LIBARCHIVE_LIBRARIES})
+# ------ 查找 cJSON 库（手动方式，因为 pkg-config 可能无 .pc） ------
+# 先尝试 pkg-config（某些发行版可能提供）
+pkg_check_modules(CJSON QUIET cjson)
+if(NOT CJSON_FOUND)
+    # 尝试查找头文件和库
+    find_path(CJSON_INCLUDE_DIR
+        NAMES cjson/cJSON.h cJSON.h
+        PATHS /usr/include /usr/local/include
+    )
+    find_library(CJSON_LIBRARY
+        NAMES cjson cJSON
+        PATHS /usr/lib /usr/local/lib
+    )
+    if(CJSON_INCLUDE_DIR AND CJSON_LIBRARY)
+        set(CJSON_INCLUDE_DIRS ${CJSON_INCLUDE_DIR})
+        set(CJSON_LIBRARIES ${CJSON_LIBRARY})
+        set(CJSON_FOUND TRUE)
+    else()
+        message(FATAL_ERROR "cJSON library not found. Please install libcjson-dev (e.g., sudo apt install libcjson-dev).")
+    endif()
+endif()
+# ------------------------------------------------------
 
-# 如果 libarchive 提供了编译定义（如 _LARGEFILE64_SOURCE），可追加
-# target_compile_definitions(cpkg PRIVATE ${LIBARCHIVE_CFLAGS_OTHER})
+target_include_directories(cpkg PRIVATE
+    ${LIBARCHIVE_INCLUDE_DIRS}
+    ${LIBYAML_INCLUDE_DIRS}
+    ${OPENSSL_INCLUDE_DIRS}
+    ${CJSON_INCLUDE_DIRS}
+)
 
-# ===================== 可选：安装规则 =====================
+target_link_libraries(cpkg
+    ${LIBARCHIVE_LIBRARIES}
+    ${LIBYAML_LIBRARIES}
+    ${OPENSSL_LIBRARIES}
+    ${CJSON_LIBRARIES}
+)
+
 install(TARGETS cpkg DESTINATION bin)
 
 # ===================== 可选：测试 =====================

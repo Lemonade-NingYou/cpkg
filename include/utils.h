@@ -4,102 +4,157 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <sys/stat.h>
 
+#define MAGIC "CPL"
+#define MAGIC_LEN 3
+#define SHA256_LEN 32
+#define CHUNK_SIZE 4096
 #define WORK_DIR "/var/cache/cpkg"
+#define TEMP_PATH WORK_DIR "/temp/"
 #define LOCKFILE_PATH WORK_DIR "/lock"
 
 // 配置文件结构体
 typedef struct Config {
-    char PocketName[50];
+    char PocketName[64];
     char version[32];
-    char authors[64];
+    char** authors;  // 作者列表
+    int author_count;
     char license[64];
-    char description[128];
-    int libs;                  // libNames 数组长度
-    char **libNames;           // 动态分配
-    int include;               // includeNames 数组长度
-    char **includeNames;       // 动态分配
+    char description[512];
+    char homepage[128];
+    char repository[128];
+
+    // files 部分
+    char** include_patterns;
+    int include_count;
+    char** lib_patterns;
+    int lib_count;
+    char** exclude_patterns;
+    int exclude_count;
+    char** special_files;
+    int special_count;
+
+    // default_dirs
+    char default_libs_dir[64];
+    char default_include_dir[64];
+
+    // 高级选项
+    bool strict;
+    bool flatten;
+    bool ignore_hidden;
+    bool follow_symlinks;
 } Config;
 
+// 安装列表结构体
+typedef struct {
+    char **paths;
+    int count;
+    int capacity;
+} InstallList;
+
 /**
- * @brief 读取 config.txt 文件（格式：key: value，数组用逗号分隔）
- * @param ConfigPath 配置文件路径
- * @return Config* 结构体指针，需调用 FreeConfig 释放
+ * @brief 读取 config.txt 文件（YAML 格式）
  */
-Config *ReadConfig(const char *ConfigPath);
+Config* ReadConfig(const char* ConfigPath);
 
 /**
  * @brief 释放 Config 结构体内存
- * @param config 要释放的结构体指针
  */
-void FreeConfig(Config *config);
+void FreeConfig(Config* config);
 
 /**
  * @brief 将 Config 结构体转换为 JSON 格式字符串
- * @param config 结构体指针
- * @return char* JSON 字符串，需调用 free 释放
  */
-char *ChangeStructToJson(const Config *config);
+char* ChangeStructToJson(const Config* config);
 
 /**
  * @brief 判断文件夹是否存在
- * @param path 目录路径
- * @return true 存在，false 不存在或不是目录
  */
-bool is_dir(const char *path);
+bool is_dir(const char* path);
 
 /**
  * @brief 获取普通文件大小（字节）
- * @param path 文件路径
- * @param size 输出参数
- * @return true 成功，false 失败（非普通文件或无法访问）
  */
-bool get_file_size(const char *path, uint64_t *size);
+bool get_file_size(const char* path, uint64_t* size);
 
 /**
- * @brief 获取目录总大小（递归累加，不跟随符号链接）
- * @param path 目录路径
- * @param total 输出总大小（字节）
- * @return true 成功，false 路径不存在或非目录
+ * @brief 获取目录总大小（递归）
  */
-bool get_directory_size(const char *path, uint64_t *total);
+bool get_directory_size(const char* path, uint64_t* total);
 
 /**
  * @brief 将单个文件压缩为 tar.gz 格式并存储在内存中
- * @param filePath 文件路径
- * @param outSize 输出参数，返回压缩后数据大小（字节）
- * @return unsigned char* 压缩数据指针，需调用 free 释放；失败返回 NULL
  */
-unsigned char *GzipToMemory(const char *filePath, size_t *outSize);
+unsigned char* GzipToMemory(const char* filePath, size_t* outSize);
 
 /**
- * @brief 将两个目录压缩为 tar.gz 格式，归档内包含 libs/ 和 include/ 目录
- * @param libsPath 库目录路径
- * @param includePath 包含目录路径
- * @param outSize 输出压缩后数据大小
- * @return unsigned char* 压缩数据指针，需 free；失败返回 NULL
+ * @brief 将两个目录压缩为 tar.gz 格式
  */
-unsigned char *GzipToMemoryDir(const char *libsPath, const char *includePath, size_t *outSize);
+unsigned char* GzipToMemoryDir(const char* libsPath, const char* includePath, size_t* outSize);
 
 /**
- * @brief 初始化 .cpkg 目录结构
+ * @brief 计算输入数据的 SHA-256 摘要
+ */
+int ComputeSha256(const unsigned char* data, size_t len, unsigned char* digest, unsigned int* digest_len);
+
+/**
+ * @brief 初始化工作目录
  */
 void InitCpkg(void);
 
 /**
- * @brief 创建锁文件以防止并发操作
- * @note 锁文件路径为 .cpkg/lockfile.lock
- * @return void
- * @warning 如果无法创建锁文件，将打印错误并退出程序
+ * @brief 创建锁文件
  */
 void GetLock(void);
 
 /**
  * @brief 释放锁文件
- * @note 释放锁文件后，其他进程可以继续操作
- * @return void
- * @warning 如果无法释放锁文件，将打印警告信息
  */
 void ReleaseLock(void);
-#endif // UTILS_H
+
+/**
+ * @brief 增量复制文件或目录
+ */
+int copy_path_incremental(const char* src, const char* dst_base);
+
+/**
+ * @brief 验证魔术字
+ */
+int VerifyMagic(FILE* stream);
+
+/**
+ * @brief 解压 gzip 压缩的数据到内存
+ */
+unsigned char* DecompressGzipToMemory(const unsigned char* compressed_data,
+                                      size_t compressed_len,
+                                      size_t* out_len);
+
+/**
+ * @brief 解压 pocket (tar.gz) 到指定目录
+ */
+int DecompressPocketToDir(const unsigned char* pocket_gzip,
+                          size_t pocket_len,
+                          const char* dest_dir);
+
+/**
+ * @brief 从 JSON 字符串解析 Config 结构体
+ */
+Config* ParseConfigFromJson(const char* json_str);
+
+/**
+ * @brief 验证包数据的完整性
+ */
+bool VerifyHash(const unsigned char* expected_hash, const unsigned char* data, size_t data_len);
+
+/* ----- 安装辅助函数 ----- */
+void install_list_init(InstallList *list);
+int install_list_add(InstallList *list, const char *path);
+void install_list_free(InstallList *list);
+int copy_file_simple(const char *src, const char *dst);
+int remove_directory(const char *path);
+int install_dir_to_multi(const char *src_dir, const char **dst_bases,
+                         int dst_count, InstallList *list);
+
+#endif  // UTILS_H

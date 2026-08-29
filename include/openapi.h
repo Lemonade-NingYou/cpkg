@@ -18,4 +18,10 @@ int build(char *BuildPath);
  */
 int install(char *InstallPath);
 
+/**
+ * @brief 将cpl包删除
+ * @param PocketName 安装的包名
+ * @return 成功:0 失败:非0
+ */
+//int remove(char *PocketName);
 #endif //OpenAPI.h

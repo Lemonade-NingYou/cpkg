@@ -8,21 +8,29 @@
 char* version_string = "1.0.0";  // 版本号字符串
 
 static struct option long_options[] = {
-    {"install", required_argument, 0, 'i'}, // 新增 --install
-    {"build",   required_argument, 0, 'b'},
-    {"help",    no_argument,       0, 'h'},
-    {"version", no_argument,       0, 'V'},
-    {0, 0, 0, 0}
-};
+    {"install", required_argument, 0, 'i'},  // 新增 --install
+    {"build", required_argument, 0, 'b'},
+    {"help", no_argument, 0, 'h'},
+    {"version", no_argument, 0, 'V'},
+    {0, 0, 0, 0}};
 
 int main(int argc, char* argv[]) {
     int opt;
     int option_index = 0;
     char* filename = NULL;
 
-    while ((opt = getopt_long(argc, argv, "i:b:hV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "r:i:b:hV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'i': {
+                filename = optarg;
+                int install_result = install(filename);
+                if (install_result != 0) {
+                    ErrorArg(install_result);
+                    return 1;
+                }
+                break;
+            }
+            case 'r': {
                 filename = optarg;
                 int install_result = install(filename);
                 if (install_result != 0) {

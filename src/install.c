@@ -1,34 +1,302 @@
-#include "openapi.h"
-#include "utils.h"
-#include "outerror.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <limits.h>
 
-int install(char *InstallPath)
-{
-    // 检查工作目录是否存在，如果不存在则创建
-    if(is_dir(WORK_DIR)) {
+#include "openapi.h"
+#include "outerror.h"
+#include "utils.h"
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
+int install(char* InstallPath) {
+    // 检查工作目录
+    if (is_dir(WORK_DIR) == false) {
         printf("welcome to use cpkg!\n");
         InitCpkg();
     }
 
-    // 1. 获取锁文件，防止同时安装多个包
     GetLock();
 
-    // 2. 检查文件真实性
-    
-    // 2. 解压安装包到指定路径
-    
-    // 3. 读取 config.txt 文件，获取包信息
-    // 4. 记录配置信息
-    FILE *Configfile = fopen("UNO", "w");
-    if(Configfile == NULL) {
-        return CreateConfigFile;
+    FILE* CPLFile = fopen(InstallPath, "rb");
+    if (CPLFile == NULL) {
+        ReleaseLock();
+        return OpenCPLFile;
     }
-    // 5. 将库文件和头文件复制到系统目录或指定目录
-    // 6. 生成 JSON 文件，记录安装信息
 
-    // printf("Installing package from: %s\n", InstallPath);
-    // 7. 释放锁文件
+    // 验证魔术字
+    int MagicReturn = VerifyMagic(CPLFile);
+    if (MagicReturn != Successful) {
+        fclose(CPLFile);
+        ReleaseLock();
+        return MagicReturn;
+    }
+
+    // 读取哈希
+    unsigned char expected_hash[SHA256_LEN];
+    if (fread(expected_hash, 1, SHA256_LEN, CPLFile) != SHA256_LEN) {
+        fclose(CPLFile);
+        ReleaseLock();
+        return ReadHashError;
+    }
+
+    // 读取 JSON 大小
+    unsigned char JsonSize[4];
+    if (fread(JsonSize, 1, 4, CPLFile) != 4) {
+        fclose(CPLFile);
+        ReleaseLock();
+        return ReadJsonSizeError;
+    }
+    uint32_t Jsonsize;
+    memcpy(&Jsonsize, JsonSize, 4);
+
+    unsigned char* JsonGzip = (unsigned char*)malloc(Jsonsize);
+    if (JsonGzip == NULL) {
+        fclose(CPLFile);
+        ReleaseLock();
+        return MemoryAllocError;
+    }
+    if (fread(JsonGzip, 1, Jsonsize, CPLFile) != Jsonsize) {
+        fclose(CPLFile);
+        free(JsonGzip);
+        ReleaseLock();
+        return ReadJsonMemoryError;
+    }
+
+    // 读取 Pocket 大小
+    unsigned char PocketSize[4];
+    if (fread(PocketSize, 1, 4, CPLFile) != 4) {
+        fclose(CPLFile);
+        free(JsonGzip);
+        ReleaseLock();
+        return ReadPocketSizeError;
+    }
+    uint32_t Pocketsize;
+    memcpy(&Pocketsize, PocketSize, 4);
+
+    unsigned char* PocketGzip = (unsigned char*)malloc(Pocketsize);
+    if (PocketGzip == NULL) {
+        fclose(CPLFile);
+        free(JsonGzip);
+        ReleaseLock();
+        return MemoryAllocError;
+    }
+    if (fread(PocketGzip, 1, Pocketsize, CPLFile) != Pocketsize) {
+        fclose(CPLFile);
+        free(JsonGzip);
+        free(PocketGzip);
+        ReleaseLock();
+        return ReadPocketMemoryError;
+    }
+
+    // 校验数据完整性
+    size_t total_size = sizeof(uint32_t) + Jsonsize + sizeof(uint32_t) + Pocketsize;
+    unsigned char* full_data = (unsigned char*)malloc(total_size);
+    if (full_data == NULL) {
+        fclose(CPLFile);
+        free(JsonGzip);
+        free(PocketGzip);
+        ReleaseLock();
+        return MemoryAllocError;
+    }
+    unsigned char* ptr = full_data;
+    memcpy(ptr, &Jsonsize, sizeof(uint32_t)); ptr += sizeof(uint32_t);
+    memcpy(ptr, JsonGzip, Jsonsize); ptr += Jsonsize;
+    memcpy(ptr, &Pocketsize, sizeof(uint32_t)); ptr += sizeof(uint32_t);
+    memcpy(ptr, PocketGzip, Pocketsize);
+
+    if (!VerifyHash(expected_hash, full_data, total_size)) {
+        free(full_data);
+        fclose(CPLFile);
+        free(JsonGzip);
+        free(PocketGzip);
+        ReleaseLock();
+        return HashMismatchError;
+    }
+    free(full_data);
+
+    // ------------------ 解压 JSON（保留原始字符串）------------------
+    size_t json_decomp_len;
+    unsigned char* json_decomp = DecompressGzipToMemory(JsonGzip, Jsonsize, &json_decomp_len);
+    if (!json_decomp) {
+        fclose(CPLFile);
+        free(JsonGzip);
+        free(PocketGzip);
+        ReleaseLock();
+        return DecompressJsonError;
+    }
+    // 解析配置（此时 json_decomp 仍有效）
+    Config* config = ParseConfigFromJson((const char*)json_decomp);
+    if (!config) {
+        fclose(CPLFile);
+        free(JsonGzip);
+        free(PocketGzip);
+        free(json_decomp);
+        ReleaseLock();
+        return ParseConfigError;
+    }
+
+    // 确保 TEMP_PATH 存在
+    if (!is_dir(TEMP_PATH)) {
+        if (mkdir(TEMP_PATH, 0755) != 0 && errno != EEXIST) {
+            FreeConfig(config);
+            fclose(CPLFile);
+            free(JsonGzip);
+            free(PocketGzip);
+            free(json_decomp);
+            ReleaseLock();
+            return CreateTempDirError;
+        }
+    }
+
+    // 解压 pocket
+    char pocket_temp_path[PATH_MAX];
+    snprintf(pocket_temp_path, sizeof(pocket_temp_path), "%s/pocket", TEMP_PATH);
+    if (DecompressPocketToDir(PocketGzip, Pocketsize, pocket_temp_path) != 0) {
+        FreeConfig(config);
+        fclose(CPLFile);
+        free(JsonGzip);
+        free(PocketGzip);
+        free(json_decomp);
+        ReleaseLock();
+        return DecompressPocketError;
+    }
+
+    // 释放压缩数据（已解压完）
+    free(JsonGzip);
+    free(PocketGzip);
+    fclose(CPLFile);
+
+    // ------------------ 安装文件 ------------------
+    printf("Installing files to system directories...\n");
+
+    const char *lib_dsts[] = { "/usr/lib/x86_64-linux-gnu", NULL };
+    const char *include_dsts[] = { "/usr/include/x86_64-linux-gnu", "/usr/include", NULL };
+
+    InstallList installed;
+    install_list_init(&installed);
+
+    char libs_temp[PATH_MAX], include_temp[PATH_MAX];
+    snprintf(libs_temp, sizeof(libs_temp), "%s/pocket/libs", TEMP_PATH);
+    snprintf(include_temp, sizeof(include_temp), "%s/pocket/include", TEMP_PATH);
+
+    int ret = 0;
+    if (is_dir(libs_temp)) {
+        printf("  Installing libraries to %s...\n", lib_dsts[0]);
+        if (install_dir_to_multi(libs_temp, lib_dsts, 1, &installed) != 0) {
+            ret = InstallLibsError;
+            goto cleanup;
+        }
+    }
+    if (is_dir(include_temp)) {
+        printf("  Installing headers to %s and %s...\n", include_dsts[0], include_dsts[1]);
+        if (install_dir_to_multi(include_temp, include_dsts, 2, &installed) != 0) {
+            ret = InstallIncludeError;
+            goto cleanup;
+        }
+    }
+
+    // ------------------ 写入记录文件（原始 config + installed_files）------------------
+    printf("Recording installation manifest...\n");
+    char record_path[PATH_MAX];
+    snprintf(record_path, sizeof(record_path), "%s/%s.json", WORK_DIR, config->PocketName);
+
+    // 1) 构造 installed_files 数组字符串
+    // 预估空间：每个路径最多 PATH_MAX，加上引号、逗号、换行等
+    size_t files_str_size = 256;
+    char* files_str = malloc(files_str_size);
+    if (!files_str) {
+        ret = MemoryAllocError;
+        goto cleanup;
+    }
+    size_t pos = 0;
+    pos += snprintf(files_str + pos, files_str_size - pos, "\"installed_files\": [\n");
+    for (int i = 0; i < installed.count; i++) {
+        // 确保空间足够
+        size_t needed = strlen(installed.paths[i]) + 10; // 引号、逗号、换行等
+        if (pos + needed >= files_str_size) {
+            files_str_size *= 2;
+            char* tmp = realloc(files_str, files_str_size);
+            if (!tmp) {
+                free(files_str);
+                ret = MemoryAllocError;
+                goto cleanup;
+            }
+            files_str = tmp;
+        }
+        pos += snprintf(files_str + pos, files_str_size - pos,
+                        "    \"%s\"%s\n",
+                        installed.paths[i],
+                        (i < installed.count - 1) ? "," : "");
+    }
+    // 确保末尾有空间
+    if (pos + 4 >= files_str_size) {
+        files_str_size += 16;
+        char* tmp = realloc(files_str, files_str_size);
+        if (!tmp) {
+            free(files_str);
+            ret = MemoryAllocError;
+            goto cleanup;
+        }
+        files_str = tmp;
+    }
+    pos += snprintf(files_str + pos, files_str_size - pos, "  ]");
+
+    // 2) 在原 JSON 末尾插入该数组
+    char* last_brace = strrchr((char*)json_decomp, '}');
+    if (!last_brace) {
+        free(files_str);
+        ret = ParseConfigError;   // 或自定义错误
+        goto cleanup;
+    }
+    size_t prefix_len = last_brace - (char*)json_decomp;
+    size_t new_json_len = prefix_len + 2 + strlen(files_str) + 2; // 逗号、空格、换行、}
+    char* new_json = (char*)malloc(new_json_len + 1);
+    if (!new_json) {
+        free(files_str);
+        ret = MemoryAllocError;
+        goto cleanup;
+    }
+    snprintf(new_json, new_json_len + 1, "%.*s, %s\n}", (int)prefix_len, json_decomp, files_str);
+    free(files_str);
+
+    // 3) 写入记录文件
+    FILE* rec = fopen(record_path, "w");
+    if (!rec) {
+        fprintf(stderr, "Failed to create manifest file %s\n", record_path);
+        free(new_json);
+        ret = CreateManifestError;
+        goto cleanup;
+    }
+    fwrite(new_json, 1, strlen(new_json), rec);
+    fclose(rec);
+    free(new_json);
+    printf("  Manifest saved to %s\n", record_path);
+
+    // 释放原始 JSON 字符串（已不再需要）
+    free(json_decomp);
+    json_decomp = NULL;  // 防止 cleanup 重复释放
+
+    // 清理临时目录
+    printf("Cleaning up temporary files...\n");
+    remove_directory(TEMP_PATH);
+    printf("Cleanup done.\n");
+
+    install_list_free(&installed);
+    FreeConfig(config);
     ReleaseLock();
-
     return Successful;
+
+cleanup:
+    fprintf(stderr, "Installation failed at step 8/9/10\n");
+    if (json_decomp) free(json_decomp);
+    install_list_free(&installed);
+    FreeConfig(config);
+    remove_directory(TEMP_PATH);
+    ReleaseLock();
+    return ret;
 }
