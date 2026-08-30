@@ -65,7 +65,7 @@ All features are now production-ready. The project is in **public beta** – we 
 ### Build cpkg from source
 
 ```bash
-git clone https://github.com/chenhao2345/cpkg.git
+git clone https://github.com/Lemonade-NingYou/cpkg.git
 cd cpkg
 mkdir build && cd build
 cmake ..
@@ -227,7 +227,7 @@ The hash ensures the integrity of the whole data section.
 
 We welcome contributions! Please follow these steps:
 
-1. Fork the [cpkg GitHub repository](https://github.com/chenhao2345/cpkg).
+1. Fork the [cpkg GitHub repository](https://github.com/Lemonade-NingYou/cpkg).
 2. Create a new branch for your changes.
 3. Make your changes and test them thoroughly.
 4. Create a pull request to the main branch.

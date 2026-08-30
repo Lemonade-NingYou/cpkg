@@ -69,7 +69,7 @@ sudo apt install libyaml-dev libarchive-dev libssl-dev libcjson-dev
 ### cpkg aus dem Quellcode erstellen
 
 ```bash
-git clone https://github.com/chenhao2345/cpkg.git
+git clone https://github.com/Lemonade-NingYou/cpkg.git
 cd cpkg
 mkdir build && cd build
 cmake ..
@@ -124,7 +124,7 @@ cpkg -V   # Version
 
 ## Mitwirken
 
-1. Fork des [cpkg GitHub-Repositorys](https://github.com/chenhao2345/cpkg).
+1. Fork des [cpkg GitHub-Repositorys](https://github.com/Lemonade-NingYou/cpkg).
 2. Neuen Branch für Ihre Änderungen erstellen.
 3. Änderungen vornehmen und gründlich testen.
 4. Pull-Request an den Hauptzweig senden.

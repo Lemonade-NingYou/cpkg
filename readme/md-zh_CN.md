@@ -61,7 +61,7 @@ cpkg 是一个轻量级的 C 包管理器，用于简化 C 库和头文件的打
 ## 从源码构建
 
 ```bash
-git clone https://github.com/chenhao2345/cpkg.git
+git clone https://github.com/Lemonade-NingYou/cpkg.git
 cd cpkg
 mkdir build && cd build
 cmake ..
@@ -223,7 +223,7 @@ cpkg -V   # 显示版本号
 
 如果您想贡献代码，请按以下步骤操作：
 
-1. Fork [cpkg GitHub 仓库](https://github.com/chenhao2345/cpkg)。
+1. Fork [cpkg GitHub 仓库](https://github.com/Lemonade-NingYou/cpkg)。
 2. 为您的修改创建新分支。
 3. 进行修改并充分测试。
 4. 提交 pull request 到主分支。
