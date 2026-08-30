@@ -15,7 +15,7 @@
 #define PATH_MAX 4096
 #endif
 
-int build(char *BuildPath) {
+int CPKG_build(char *BuildPath) {
     if (chdir(BuildPath) != 0) return ChangeDir;
 
     printf("reading config.txt... ");

@@ -1,50 +1,53 @@
-根据您最新的代码实现（构建和安装均已完整可用），我已更新所有文档（英文、中文、德文）。主要变更如下：
-
-- **状态更新**：`install` 功能标记为 ✅ 已完成，版本提升至 `2.0.0`。
-- **新增内容**：添加完整的 **配置说明**（YAML 格式），包含所有字段的详解。
-- **使用示例**：补充构建和安装的具体命令及输出示例。
-- **注意事项**：说明运行权限（需 root）和生成的包文件格式。
-- **项目状态**：更新徽标颜色和状态文本。
-
-以下为三个文档的最终版本：
-
----
-
-### `README.md`（英文版）
-
-```markdown
-# cpkg - A Lightweight C Package Manager
+# cpkg – A Lightweight C Package Manager
 
 <div align="center">
   <img src="image/cpkg icon.jpg" alt="cpkg Icon" width="200">
   
   ![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
   ![Platform](https://img.shields.io/badge/platform-Linux-green.svg)
-  ![Version](https://img.shields.io/badge/version-2.0.0-brightgreen.svg)
-  ![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)
+  ![Version](https://img.shields.io/badge/version-2.0.0--beta-brightgreen.svg)
+  ![Status](https://img.shields.io/badge/status-public%20beta-brightgreen.svg)
 
-**A lightweight C package manager – build and install C libraries/headers with ease**
+**Build, install, and manage C libraries with confidence**
 </div>
 
 ## Language
-English | [中文](readme/md-zh_CN.md) | [Deutsch](readme/md-de_DE.md)
+[English](#) | [中文](readme/md-zh_CN.md) | [Deutsch](readme/md-de_DE.md)
+
+---
+
+## 🎉 Public Beta Announcement
+
+We are thrilled to announce that **cpkg 2.0.0** is now in **Public Beta**!  
+
+All core functionalities are fully implemented and tested:
+- ✅ **Build** – package your C projects into a single `.cpl` file
+- ✅ **Install** – verify and install packages to system directories
+- ✅ **Remove** – cleanly uninstall packages using the recorded manifest
+- ✅ **List** – view all installed packages with their metadata
+
+The tool is ready for real-world use. We welcome your feedback and contributions.
+
+---
 
 ## Introduction
 
 cpkg is a lightweight C package manager that simplifies packaging, installing, and managing C libraries and headers.  
 
-This repository contains a **completely refactored** version of cpkg, featuring a modular design, integrity checks (SHA‑256), and support for incremental builds.
+This repository contains a **completely refactored** version of cpkg, featuring a modular design, integrity checks (SHA‑256), incremental builds, and a clean manifest system.
 
-Both **build** and **install** subcommands are fully functional. Removal is planned for the next release.
+All core subcommands (`build`, `install`, `remove`, `list`) are fully functional.
 
 ## Features
 
 - **Build** – Package source directories into a self-contained `.cpl` file.
 - **Install** – Verify and install `.cpl` packages to system directories.
+- **Remove** – Uninstall packages by reading the recorded manifest.
+- **List** – Show all installed packages with their metadata.
 - **Integrity** – SHA‑256 hash validation prevents corruption or tampering.
 - **Incremental** – Only modified files are copied during build (saves time).
 - **Clean** – Automatically cleans temporary files after installation.
-- **Manifest** – Records every installed file for future uninstallation.
+- **Manifest** – Records every installed file for future removal.
 
 ## Project Status
 
@@ -52,8 +55,10 @@ Both **build** and **install** subcommands are fully functional. Removal is plan
 |---------------|-------------------------|
 | `build`       | ✅ Complete             |
 | `install`     | ✅ Complete             |
-| `remove`      | ❌ Not started          |
-| `list`        | ❌ Not started          |
+| `remove`      | ✅ Complete             |
+| `list`        | ✅ Complete             |
+
+All features are now production-ready. The project is in **public beta** – we encourage testing and reporting issues.
 
 ## Getting Started
 
@@ -165,7 +170,7 @@ The output file will be named `<PocketName>-<version>.cpl` in the same directory
 ### Install a package
 
 ```bash
-cpkg -i mylib-1.2.3.cpl
+sudo cpkg -i mylib-1.2.3.cpl
 ```
 
 This will:
@@ -176,6 +181,25 @@ This will:
 - Record all installed files in `/var/cache/cpkg/<PocketName>.json`.
 
 > **Important**: Installation writes to system directories – you need **root privileges** (use `sudo`).
+
+### Remove a package
+
+```bash
+sudo cpkg -r mylib
+```
+
+This will:
+- Read the manifest file `/var/cache/cpkg/mylib.json`.
+- Delete every file listed in `installed_files`.
+- Remove the manifest file itself.
+
+### List installed packages
+
+```bash
+cpkg -l
+```
+
+This will display all installed packages along with their metadata (name, version, authors, license, description, homepage, repository).
 
 ### Help & Version
 
@@ -201,13 +225,12 @@ The hash ensures the integrity of the whole data section.
 
 ## Contributing
 
-If you would like to contribute to cpkg, please follow these steps:
+We welcome contributions! Please follow these steps:
 
 1. Fork the [cpkg GitHub repository](https://github.com/chenhao2345/cpkg).
 2. Create a new branch for your changes.
-3. Make your changes.
-4. Test your changes.
-5. Create a pull request to the main branch of the cpkg repository.
+3. Make your changes and test them thoroughly.
+4. Create a pull request to the main branch.
 
 ## License
 

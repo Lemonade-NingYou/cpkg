@@ -5,27 +5,43 @@
   
   ![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
   ![Platform](https://img.shields.io/badge/platform-Linux-green.svg)
-  ![Version](https://img.shields.io/badge/version-2.0.0-brightgreen.svg)
-  ![Status](https://img.shields.io/badge/status-稳定版-brightgreen.svg)
+  ![Version](https://img.shields.io/badge/version-2.0.0--beta-brightgreen.svg)
+  ![Status](https://img.shields.io/badge/status-公测版-brightgreen.svg)
 
-**一个轻量级的 C 包管理器 – 轻松构建和安装 C 库及头文件**
+**轻松构建、安装和管理 C 库**
 </div>
 
 ## 语言
 [English](../README.md) | 中文 | [Deutsch](md-de_DE.md)
 
+---
+
+## 🎉 公测版发布公告
+
+我们很高兴宣布 **cpkg 2.0.0** 现已进入 **公测版**！
+
+所有核心功能均已完整实现并通过测试：
+- ✅ **构建** – 将您的 C 项目打包成单个 `.cpl` 文件
+- ✅ **安装** – 验证并安装包到系统目录
+- ✅ **卸载** – 根据记录清单干净地卸载包
+- ✅ **列表** – 查看所有已安装的包及其元数据
+
+该工具已可用于实际场景，欢迎反馈和贡献。
+
+---
+
 ## 介绍
 
 cpkg 是一个轻量级的 C 包管理器，用于简化 C 库和头文件的打包、安装与管理。
 
-本仓库是 cpkg 的**完全重构版**，采用模块化设计，支持完整性校验（SHA‑256）和增量构建。
-
-**构建（build）** 和 **安装（install）** 功能均已完整实现，卸载功能计划在下个版本提供。
+本仓库是 cpkg 的**完全重构版**，采用模块化设计，支持完整性校验（SHA‑256）、增量构建和清单系统。
 
 ## 特性
 
 - **构建** – 将源码目录打包为自包含的 `.cpl` 文件。
 - **安装** – 验证并安装 `.cpl` 包到系统目录。
+- **卸载** – 通过读取记录清单删除已安装文件。
+- **列表** – 显示所有已安装包及其元数据。
 - **完整性** – SHA‑256 哈希校验防止损坏或篡改。
 - **增量** – 构建时仅复制修改过的文件（节省时间）。
 - **清理** – 安装后自动清除临时文件。
@@ -37,8 +53,10 @@ cpkg 是一个轻量级的 C 包管理器，用于简化 C 库和头文件的打
 |--------------|-----------------------|
 | `build`      | ✅ 已完成             |
 | `install`    | ✅ 已完成             |
-| `remove`     | ❌ 未开始             |
-| `list`       | ❌ 未开始             |
+| `remove`     | ✅ 已完成             |
+| `list`       | ✅ 已完成             |
+
+所有功能均已达到生产就绪状态，项目处于 **公测版**，欢迎测试和反馈问题。
 
 ## 从源码构建
 
@@ -148,7 +166,7 @@ cpkg -b /path/to/project
 ### 安装包
 
 ```bash
-cpkg -i mylib-1.2.3.cpl
+sudo cpkg -i mylib-1.2.3.cpl
 ```
 
 该命令将：
@@ -159,6 +177,25 @@ cpkg -i mylib-1.2.3.cpl
 - 记录所有已安装文件到 `/var/cache/cpkg/<PocketName>.json`。
 
 > **重要**：安装会写入系统目录，需要 **root 权限**（使用 `sudo`）。
+
+### 卸载包
+
+```bash
+sudo cpkg -r mylib
+```
+
+该命令将：
+- 读取记录文件 `/var/cache/cpkg/mylib.json`。
+- 删除 `installed_files` 中列出的所有文件。
+- 删除记录文件本身。
+
+### 列出已安装的包
+
+```bash
+cpkg -l
+```
+
+将显示所有已安装包及其元数据（名称、版本、作者、许可证、描述、主页、仓库）。
 
 ### 帮助与版本
 
@@ -188,9 +225,8 @@ cpkg -V   # 显示版本号
 
 1. Fork [cpkg GitHub 仓库](https://github.com/chenhao2345/cpkg)。
 2. 为您的修改创建新分支。
-3. 进行修改。
-4. 测试您的修改。
-5. 提交 pull request 到 cpkg 仓库的主分支。
+3. 进行修改并充分测试。
+4. 提交 pull request 到主分支。
 
 ## 许可证
 

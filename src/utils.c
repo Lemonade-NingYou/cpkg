@@ -1078,3 +1078,31 @@ int install_dir_to_multi(const char *src_dir, const char **dst_bases,
     }
     return 0;
 }
+
+void fprint_json_string(FILE* f, const char* str) {
+    if (!str) {
+        fputs("null", f);
+        return;
+    }
+    fputc('"', f);
+    while (*str) {
+        char c = *str++;
+        switch (c) {
+            case '"':  fputs("\\\"", f); break;
+            case '\\': fputs("\\\\", f); break;
+            case '\b': fputs("\\b", f);  break;
+            case '\f': fputs("\\f", f);  break;
+            case '\n': fputs("\\n", f);  break;
+            case '\r': fputs("\\r", f);  break;
+            case '\t': fputs("\\t", f);  break;
+            default:
+                if (c < 32) {
+                    fprintf(f, "\\u%04x", (unsigned char)c);
+                } else {
+                    fputc(c, f);
+                }
+                break;
+        }
+    }
+    fputc('"', f);
+}

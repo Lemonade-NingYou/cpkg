@@ -13,7 +13,7 @@
 #define PATH_MAX 4096
 #endif
 
-int install(char* InstallPath) {
+int CPKG_install(char* InstallPath) {
     // 检查工作目录
     if (is_dir(WORK_DIR) == false) {
         printf("welcome to use cpkg!\n");
@@ -200,86 +200,73 @@ int install(char* InstallPath) {
         }
     }
 
-    // ------------------ 写入记录文件（原始 config + installed_files）------------------
+    // ------------------ 写入记录文件（按示例格式）------------------
     printf("Recording installation manifest...\n");
     char record_path[PATH_MAX];
     snprintf(record_path, sizeof(record_path), "%s/%s.json", WORK_DIR, config->PocketName);
 
-    // 1) 构造 installed_files 数组字符串
-    // 预估空间：每个路径最多 PATH_MAX，加上引号、逗号、换行等
-    size_t files_str_size = 256;
-    char* files_str = malloc(files_str_size);
-    if (!files_str) {
-        ret = MemoryAllocError;
-        goto cleanup;
-    }
-    size_t pos = 0;
-    pos += snprintf(files_str + pos, files_str_size - pos, "\"installed_files\": [\n");
-    for (int i = 0; i < installed.count; i++) {
-        // 确保空间足够
-        size_t needed = strlen(installed.paths[i]) + 10; // 引号、逗号、换行等
-        if (pos + needed >= files_str_size) {
-            files_str_size *= 2;
-            char* tmp = realloc(files_str, files_str_size);
-            if (!tmp) {
-                free(files_str);
-                ret = MemoryAllocError;
-                goto cleanup;
-            }
-            files_str = tmp;
-        }
-        pos += snprintf(files_str + pos, files_str_size - pos,
-                        "    \"%s\"%s\n",
-                        installed.paths[i],
-                        (i < installed.count - 1) ? "," : "");
-    }
-    // 确保末尾有空间
-    if (pos + 4 >= files_str_size) {
-        files_str_size += 16;
-        char* tmp = realloc(files_str, files_str_size);
-        if (!tmp) {
-            free(files_str);
-            ret = MemoryAllocError;
-            goto cleanup;
-        }
-        files_str = tmp;
-    }
-    pos += snprintf(files_str + pos, files_str_size - pos, "  ]");
+    // 原始 JSON 字符串不再需要，提前释放
+    free(json_decomp);
+    json_decomp = NULL;
 
-    // 2) 在原 JSON 末尾插入该数组
-    char* last_brace = strrchr((char*)json_decomp, '}');
-    if (!last_brace) {
-        free(files_str);
-        ret = ParseConfigError;   // 或自定义错误
-        goto cleanup;
-    }
-    size_t prefix_len = last_brace - (char*)json_decomp;
-    size_t new_json_len = prefix_len + 2 + strlen(files_str) + 2; // 逗号、空格、换行、}
-    char* new_json = (char*)malloc(new_json_len + 1);
-    if (!new_json) {
-        free(files_str);
-        ret = MemoryAllocError;
-        goto cleanup;
-    }
-    snprintf(new_json, new_json_len + 1, "%.*s, %s\n}", (int)prefix_len, json_decomp, files_str);
-    free(files_str);
-
-    // 3) 写入记录文件
     FILE* rec = fopen(record_path, "w");
     if (!rec) {
         fprintf(stderr, "Failed to create manifest file %s\n", record_path);
-        free(new_json);
         ret = CreateManifestError;
         goto cleanup;
     }
-    fwrite(new_json, 1, strlen(new_json), rec);
-    fclose(rec);
-    free(new_json);
-    printf("  Manifest saved to %s\n", record_path);
 
-    // 释放原始 JSON 字符串（已不再需要）
-    free(json_decomp);
-    json_decomp = NULL;  // 防止 cleanup 重复释放
+    // 写入 JSON 对象（按指定顺序，字段名与 Config 结构体匹配）
+    fprintf(rec, "{\n");
+    fprintf(rec, "  \"PocketName\": ");
+    fprint_json_string(rec, config->PocketName);
+    fprintf(rec, ",\n");
+
+    fprintf(rec, "  \"version\": ");
+    fprint_json_string(rec, config->version);
+    fprintf(rec, ",\n");
+
+    fprintf(rec, "  \"authors\": [\n");
+    if (config->authors && config->author_count > 0) {
+        for (int i = 0; i < config->author_count; i++) {
+            fprintf(rec, "    ");
+            fprint_json_string(rec, config->authors[i]);
+            if (i < config->author_count - 1) fprintf(rec, ",");
+            fprintf(rec, "\n");
+        }
+    }
+    fprintf(rec, "  ],\n");
+
+    fprintf(rec, "  \"license\": ");
+    fprint_json_string(rec, config->license);
+    fprintf(rec, ",\n");
+
+    fprintf(rec, "  \"description\": ");
+    fprint_json_string(rec, config->description);
+    fprintf(rec, ",\n");
+
+    fprintf(rec, "  \"homepage\": ");
+    fprint_json_string(rec, config->homepage);
+    fprintf(rec, ",\n");
+
+    fprintf(rec, "  \"repository\": ");
+    fprint_json_string(rec, config->repository);
+    fprintf(rec, ",\n");
+
+    fprintf(rec, "  \"installed_files\": [\n");
+    if (installed.count > 0) {
+        for (int i = 0; i < installed.count; i++) {
+            fprintf(rec, "    ");
+            fprint_json_string(rec, installed.paths[i]);
+            if (i < installed.count - 1) fprintf(rec, ",");
+            fprintf(rec, "\n");
+        }
+    }
+    fprintf(rec, "  ]\n");
+    fprintf(rec, "}\n");
+
+    fclose(rec);
+    printf("  Manifest saved to %s\n", record_path);
 
     // 清理临时目录
     printf("Cleaning up temporary files...\n");
@@ -288,6 +275,7 @@ int install(char* InstallPath) {
 
     install_list_free(&installed);
     FreeConfig(config);
+    printf("Package Install successfully\n");
     ReleaseLock();
     return Successful;
 

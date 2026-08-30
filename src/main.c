@@ -5,10 +5,12 @@
 #include "openapi.h"   // 假设其中声明了 build() 和 install()
 #include "outerror.h"  // 假设其中声明了 ErrorInfo 枚举和 ErrorArg()
 
-char* version_string = "2.0.0";  // 版本号字符串
+char* version_string = "2.0.0--beta";  // 版本号字符串
 
 static struct option long_options[] = {
     {"install", required_argument, 0, 'i'},  // 新增 --install
+    {"remove", required_argument, 0, 'r'},
+    {"list", required_argument, 0, 'l'},
     {"build", required_argument, 0, 'b'},
     {"help", no_argument, 0, 'h'},
     {"version", no_argument, 0, 'V'},
@@ -19,11 +21,11 @@ int main(int argc, char* argv[]) {
     int option_index = 0;
     char* filename = NULL;
 
-    while ((opt = getopt_long(argc, argv, "r:i:b:hV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "lr:i:b:hV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'i': {
                 filename = optarg;
-                int install_result = install(filename);
+                int install_result = CPKG_install(filename);
                 if (install_result != 0) {
                     ErrorArg(install_result);
                     return 1;
@@ -32,20 +34,24 @@ int main(int argc, char* argv[]) {
             }
             case 'r': {
                 filename = optarg;
-                int install_result = install(filename);
-                if (install_result != 0) {
-                    ErrorArg(install_result);
+                int remove_result = CPKG_remove(filename);
+                if (remove_result != 0) {
+                    ErrorArg(remove_result);
                     return 1;
                 }
                 break;
             }
             case 'b': {
                 filename = optarg;
-                int build_result = build(filename);
+                int build_result = CPKG_build(filename);
                 if (build_result != 0) {
                     ErrorArg(build_result);
                     return 1;
                 }
+                break;
+            }
+            case 'l': {
+                CPKG_list();
                 break;
             }
             case 'h':

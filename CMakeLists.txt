@@ -13,6 +13,8 @@ set(SOURCES
     src/outerror.c
     src/utils.c
     src/install.c
+    src/remove.c
+    src/list.c
 )
 
 add_executable(cpkg ${SOURCES})
