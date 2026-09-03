@@ -16,6 +16,21 @@
 
 ---
 
+## 版权与许可证
+
+版权所有 (C) 2026 Lemonade-NingYou
+
+本程序是自由软件：您可以根据自由软件基金会发布的 GNU 通用公共许可证（GPL）第 3 版或（您选择的）任何后续版本的条款重新分发和/或修改它。
+
+本程序分发的目的是希望它有用，但**没有任何担保**；甚至没有适销性或特定用途适用性的隐含担保。详情请参阅 GNU 通用公共许可证。
+
+您应该已经随本程序收到了一份 GNU 通用公共许可证的副本。如果没有，请访问 <https://www.gnu.org/licenses/>。
+
+完整许可证文本也可从以下地址获取：  
+Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA。
+
+---
+
 ## 🎉 公测版发布公告
 
 我们很高兴宣布 **cpkg 2.0.0** 现已进入 **公测版**！
@@ -35,6 +50,17 @@
 cpkg 是一个轻量级的 C 包管理器，用于简化 C 库和头文件的打包、安装与管理。
 
 本仓库是 cpkg 的**完全重构版**，采用模块化设计，支持完整性校验（SHA‑256）、增量构建和清单系统。
+
+### 自由软件合规性
+
+cpkg 是 **自由软件**，采用 GPLv3 许可证。其所有构建时和运行时依赖均为自由软件：
+
+- `libyaml-dev` – MIT 许可证
+- `libarchive-dev` – BSD 2‑Clause 许可证
+- `libssl-dev` – OpenSSL / Apache‑风格许可证
+- `libcjson-dev` – MIT 许可证
+
+我们致力于确保 cpkg 保持自由，并尊重您的自由。
 
 ## 特性
 
@@ -80,6 +106,8 @@ Debian/Ubuntu 安装命令：
 ```bash
 sudo apt install libyaml-dev libarchive-dev libssl-dev libcjson-dev
 ```
+
+所有依赖均以开源许可证自由提供（见上文）。
 
 ## 配置文件（`config.txt`）
 
@@ -143,7 +171,7 @@ follow_symlinks: false
 | `default_dirs.libs`    | 字符串       | 归档内库文件的目标目录（默认：`libs`）。                             |
 | `strict`               | 布尔值       | 若为 `true`，遇到警告则失败（默认：`false`）。                      |
 | `flatten`              | 布尔值       | 安装时展平目录结构（默认：`false`）。                                |
-| `ignore_hidden`        | 布尔值       | 忽略隐藏文件（默认：`true`）。                                       |
+| `ignore_hidden`        | 布尔值       | 忽略隐藏文件（默认：`true`）。                                      |
 | `follow_symlinks`      | 布尔值       | 跟随符号链接（默认：`false`）。                                      |
 
 > **注意**：通配符使用 `glob(3)` 展开，相对路径基于构建目录解析。
@@ -228,6 +256,13 @@ cpkg -V   # 显示版本号
 3. 进行修改并充分测试。
 4. 提交 pull request 到主分支。
 
+重大更改请先创建议题讨论。
+
+## 联系方式
+
+- 项目维护者：Lemonade-NingYou（通过 GitHub 议题或邮件）
+- 关于自由软件和许可的通用问题，请参考[自由软件基金会](https://www.fsf.org/)。
+
 ## 许可证
 
-cpkg 使用 GPLv3 许可证。
+cpkg 使用 GPLv3 许可证。完整文本请参见 [COPYING](COPYING) 文件，或访问 <https://www.gnu.org/licenses/>。

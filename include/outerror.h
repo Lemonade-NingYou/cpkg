@@ -1,6 +1,20 @@
-/**
- * @file outerror.h
- * @brief 定义所有可能的错误码，并提供错误信息打印函数。
+/*
+ * Copyright (C) 2026 Lemonade-NingYou
+ *
+ * This file is part of cpkg.
+ *
+ * cpkg is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * cpkg is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with cpkg. If not, see <https://www.gnu.org/licenses/>.
  */
 #ifndef OUTERROR_H
 #define OUTERROR_H

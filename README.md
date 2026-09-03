@@ -16,6 +16,21 @@
 
 ---
 
+## Copyright & License
+
+Copyright (C) 2026 Lemonade-NingYou
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+The complete license text is also available at:  
+Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+---
+
 ## 🎉 Public Beta Announcement
 
 We are thrilled to announce that **cpkg 2.0.0** is now in **Public Beta**!  
@@ -37,6 +52,17 @@ cpkg is a lightweight C package manager that simplifies packaging, installing, a
 This repository contains a **completely refactored** version of cpkg, featuring a modular design, integrity checks (SHA‑256), incremental builds, and a clean manifest system.
 
 All core subcommands (`build`, `install`, `remove`, `list`) are fully functional.
+
+### Free Software Compliance
+
+cpkg is **free software** under the GPLv3. All its build-time and run-time dependencies are also free software:
+
+- `libyaml-dev` – MIT license
+- `libarchive-dev` – BSD 2‑Clause license
+- `libssl-dev` – OpenSSL / Apache‑style license
+- `libcjson-dev` – MIT license
+
+We are committed to ensuring that cpkg remains free and respects your freedom.
 
 ## Features
 
@@ -84,6 +110,8 @@ On Debian/Ubuntu:
 ```bash
 sudo apt install libyaml-dev libarchive-dev libssl-dev libcjson-dev
 ```
+
+All dependencies are freely available under open-source licenses (see above).
 
 ## Configuration File (`config.txt`)
 
@@ -232,6 +260,13 @@ We welcome contributions! Please follow these steps:
 3. Make your changes and test them thoroughly.
 4. Create a pull request to the main branch.
 
+For major changes, please open an issue first to discuss what you would like to change.
+
+## Contact
+
+- Project Maintainer: Lemonade-NingYou (via GitHub issues or email)
+- For general questions about freedom and licensing, please refer to the [Free Software Foundation](https://www.fsf.org/).
+
 ## License
 
-cpkg is licensed under the GPLv3 license.
+cpkg is licensed under the GPLv3 license. See the [COPYING](COPYING) file for the full text, or visit <https://www.gnu.org/licenses/>.

@@ -1,7 +1,20 @@
-/**
- * @file list.c
- * @brief 实现 CPKG_list 函数，列出所有已安装的包及其元数据。
- * 扫描 /var/cache/cpkg 下的 .json 记录文件，解析并打印包信息。
+/*
+ * Copyright (C) 2026 Lemonade-NingYou
+ *
+ * This file is part of cpkg.
+ *
+ * cpkg is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * cpkg is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with cpkg. If not, see <https://www.gnu.org/licenses/>.
  */
 #include "utils.h"
 #include "outerror.h"

@@ -16,6 +16,21 @@
 
 ---
 
+## Urheberrecht & Lizenz
+
+Copyright (C) 2026 Lemonade-NingYou
+
+Dieses Programm ist freie Software: Sie können es unter den Bedingungen der GNU General Public License, wie von der Free Software Foundation veröffentlicht, entweder Version 3 der Lizenz oder (nach Ihrer Wahl) jeder späteren Version, weiterverteilen und/oder modifizieren.
+
+Dieses Programm wird in der Hoffnung verteilt, dass es nützlich sein wird, aber **ohne jede Gewährleistung**; selbst ohne die implizite Gewährleistung der Marktgängigkeit oder Eignung für einen bestimmten Zweck. Details finden Sie in der GNU General Public License.
+
+Sie sollten eine Kopie der GNU General Public License zusammen mit diesem Programm erhalten haben. Falls nicht, besuchen Sie <https://www.gnu.org/licenses/>.
+
+Der vollständige Lizenztext ist auch erhältlich unter:  
+Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+---
+
 ## 🎉 Ankündigung der öffentlichen Beta
 
 Wir freuen uns, bekannt zu geben, dass **cpkg 2.0.0** nun in der **öffentlichen Beta** ist!
@@ -35,6 +50,17 @@ Das Werkzeug ist bereit für den Praxiseinsatz. Wir freuen uns über Feedback un
 cpkg ist ein leichtgewichtiger C-Paketmanager, der das Paketieren, Installieren und Verwalten von C-Bibliotheken und Kopfdateien vereinfacht.
 
 Dieses Repository enthält eine **vollständig überarbeitete** Version von cpkg mit modularer Architektur, Integritätsprüfung (SHA‑256), inkrementellen Builds und einem übersichtlichen Manifest-System.
+
+### Freie-Software-Konformität
+
+cpkg ist **Freie Software** unter der GPLv3. Alle Build- und Laufzeitabhängigkeiten sind ebenfalls Freie Software:
+
+- `libyaml-dev` – MIT-Lizenz
+- `libarchive-dev` – BSD‑2‑Clause-Lizenz
+- `libssl-dev` – OpenSSL / Apache‑ähnliche Lizenz
+- `libcjson-dev` – MIT-Lizenz
+
+Wir sind bestrebt, sicherzustellen, dass cpkg frei bleibt und Ihre Freiheit respektiert.
 
 ## Funktionen
 
@@ -129,6 +155,18 @@ cpkg -V   # Version
 3. Änderungen vornehmen und gründlich testen.
 4. Pull-Request an den Hauptzweig senden.
 
+Für größere Änderungen bitten wir, zuerst ein Issue zu eröffnen.
+
+## Kontakt
+
+- Projektbetreuer: Lemonade-NingYou (über GitHub Issues oder E-Mail)
+- Allgemeine Fragen zu Freiheit und Lizenzierung richten Sie bitte an die [Free Software Foundation](https://www.fsf.org/).
+
 ## Lizenz
 
-cpkg ist unter der GPLv3-Lizenz lizenziert.
+cpkg ist unter der GPLv3-Lizenz lizenziert. Den vollständigen Text finden Sie in der Datei [COPYING](COPYING) oder unter <https://www.gnu.org/licenses/>.
+```
+
+---
+
+以上三个文件已全部更新，可直接替换原有文件。如有其他定制要求（例如添加 FSF 徽章或特定的免责声明），请随时告知。
