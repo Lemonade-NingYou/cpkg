@@ -40,6 +40,7 @@ Alle Kernfunktionen sind vollständig implementiert und getestet:
 - ✅ **Install** – Pakete verifizieren und in Systemverzeichnisse installieren
 - ✅ **Remove** – Pakete sauber anhand des Manifests deinstallieren
 - ✅ **List** – Alle installierten Pakete mit Metadaten anzeigen
+- ✅ **Manual** – Handbücher pro Paket anzeigen, mit Markdown-Rendering und C-Syntaxhervorhebung
 
 Das Werkzeug ist bereit für den Praxiseinsatz. Wir freuen uns über Feedback und Beiträge.
 
@@ -47,7 +48,7 @@ Das Werkzeug ist bereit für den Praxiseinsatz. Wir freuen uns über Feedback un
 
 ## Einführung
 
-cpkg ist ein leichtgewichtiger C-Paketmanager, der das Paketieren, Installieren und Verwalten von C-Bibliotheken und Kopfdateien vereinfacht.
+cpkg ist ein leichtgewichtiger C-Paketmanager, der das Paketieren, Installieren und Verwalten von C-Bibliotheken, Kopfdateien und Handbüchern vereinfacht.
 
 Dieses Repository enthält eine **vollständig überarbeitete** Version von cpkg mit modularer Architektur, Integritätsprüfung (SHA‑256), inkrementellen Builds und einem übersichtlichen Manifest-System.
 
@@ -68,10 +69,12 @@ Wir sind bestrebt, sicherzustellen, dass cpkg frei bleibt und Ihre Freiheit resp
 - **Install** – Überprüft und installiert `.cpl`-Pakete in Systemverzeichnisse.
 - **Remove** – Deinstalliert Pakete mithilfe des aufgezeichneten Manifests.
 - **List** – Zeigt alle installierten Pakete mit Metadaten an.
+- **Manual** – Rendert Handbücher pro Paket mit Markdown (Überschriften, Inline-Code, Fett, Kursiv, Durchgestrichen, Links, Codeblöcke) und C-Syntaxhervorhebung.
 - **Integrität** – SHA‑256-Hash schützt vor Beschädigung oder Manipulation.
 - **Inkrementell** – Nur geänderte Dateien werden beim Bau kopiert (spart Zeit).
 - **Sauber** – Löscht temporäre Dateien nach der Installation automatisch.
 - **Manifest** – Speichert jede installierte Datei für spätere Deinstallation.
+- **Sicher** – Schutz vor Pfad-Traversal beim Entpacken, Präfix-Whitelist beim Entfernen.
 
 ## Projektstatus
 
@@ -81,6 +84,7 @@ Wir sind bestrebt, sicherzustellen, dass cpkg frei bleibt und Ihre Freiheit resp
 | `install`      | ✅ Abgeschlossen        |
 | `remove`       | ✅ Abgeschlossen        |
 | `list`         | ✅ Abgeschlossen        |
+| `manual`       | ✅ Abgeschlossen        |
 
 Alle Funktionen sind produktionsreif. Das Projekt befindet sich in der **öffentlichen Beta** – wir ermutigen zum Testen und Melden von Problemen.
 
@@ -107,6 +111,33 @@ sudo make install
 
 Die Konfigurationsdatei verwendet YAML. Ein ausführliches Beispiel und alle Felder sind im [englischen README](../README.md) beschrieben.
 
+Kurzfassung:
+
+```yaml
+PocketName: mylib
+version: 1.2.3
+authors:
+  - Alice <alice@example.com>
+license: MIT
+description: |
+  Eine Beispielbibliothek.
+files:
+  include:
+    - include/*.h
+  libs:
+    - libs/*.so
+  manual:
+    - docs/manual.txt
+default_dirs:
+  include: include
+  libs: libs
+  manual: docs
+strict: false
+flatten: false
+ignore_hidden: true
+follow_symlinks: false
+```
+
 ## Verwendung
 
 ### Paket bauen
@@ -115,7 +146,7 @@ Die Konfigurationsdatei verwendet YAML. Ein ausführliches Beispiel und alle Fel
 cpkg -b /pfad/zum/projekt
 ```
 
-Erzeugt `<PocketName>-<version>.cpl`.
+Erzeugt `<PocketName>-<version>.cpl`. Kopiert alle passenden Dateien nach `.cpkg/libs`, `.cpkg/include` und `.cpkg/manual`.
 
 ### Paket installieren
 
@@ -123,7 +154,13 @@ Erzeugt `<PocketName>-<version>.cpl`.
 sudo cpkg -i paketname.cpl
 ```
 
-Installiert Bibliotheken und Header in die Systemverzeichnisse und erstellt ein Manifest unter `/var/cache/cpkg/<PocketName>.json`.
+Installiert Bibliotheken, Header und Handbücher in die Systemverzeichnisse:
+
+- Bibliotheken → `/usr/lib/x86_64-linux-gnu/`
+- Header → `/usr/include/x86_64-linux-gnu/` und `/usr/include/`
+- Handbücher → `/usr/share/cpkg/manual/<PocketName>/`
+
+Erstellt ein Manifest unter `/var/cache/cpkg/<PocketName>.json`.
 
 ### Paket entfernen
 
@@ -131,7 +168,7 @@ Installiert Bibliotheken und Header in die Systemverzeichnisse und erstellt ein 
 sudo cpkg -r paketname
 ```
 
-Liest das Manifest, löscht alle darin aufgeführten Dateien und entfernt die Manifestdatei selbst.
+Liest das Manifest, löscht alle darin aufgeführten Dateien (mit Präfix-Whitelist) und entfernt die Manifestdatei selbst.
 
 ### Installierte Pakete auflisten
 
@@ -141,12 +178,29 @@ cpkg -l
 
 Zeigt alle installierten Pakete mit Metadaten an.
 
+### Handbuch anzeigen
+
+```bash
+cpkg -m mylib
+```
+
+Rendert `/usr/share/cpkg/manual/mylib/manual.txt` mit Markdown und C-Syntaxhervorhebung.
+
 Weitere Optionen:
 
 ```bash
 cpkg -h   # Hilfe
 cpkg -V   # Version
 ```
+
+## Behobene Fehler in dieser Version
+
+- **`VerifyMagic` doppeltes `fclose`** – `VerifyMagic` schließt den Stream nicht mehr; der Aufrufer schließt ihn genau einmal.
+- **`install_dir_to_multi` verliert relative Pfade** – Die Installation behält nun die Quellverzeichnisstruktur bei.
+- **`--list` Optionstyp** – `--list` ist jetzt `no_argument`, konsistent mit `-l`.
+- **`outerror` fehlende Codes** – `ReadRecordInformationError`, `RemoveFilesError`, `CreateManualDir`, `ManualNotExist`, `InstallManualsError` werden nun behandelt.
+- **Pfad-Traversal-Schutz** – `DecompressPocketToDir` lehnt absolute Pfade und `../`-Einträge ab.
+- **Beliebiges Dateilöschen** – `CPKG_remove` validiert jeden Pfad gegen eine Präfix-Whitelist.
 
 ## Mitwirken
 
@@ -165,8 +219,3 @@ Für größere Änderungen bitten wir, zuerst ein Issue zu eröffnen.
 ## Lizenz
 
 cpkg ist unter der GPLv3-Lizenz lizenziert. Den vollständigen Text finden Sie in der Datei [COPYING](COPYING) oder unter <https://www.gnu.org/licenses/>.
-```
-
----
-
-以上三个文件已全部更新，可直接替换原有文件。如有其他定制要求（例如添加 FSF 徽章或特定的免责声明），请随时告知。

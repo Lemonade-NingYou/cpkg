@@ -286,6 +286,7 @@ _build/
 # 测试数据
 test_data/
 test_output/
+manual.txt
 
 # 个人配置
 .local/

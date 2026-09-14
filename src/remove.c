@@ -31,6 +31,25 @@
 #define PATH_MAX 4096
 #endif
 
+/* 仅允许删除以下前缀内的文件，防止 manifest 被篡改后任意删除系统文件 */
+static const char *allowed_prefixes[] = {
+    "/usr/lib/",
+    "/usr/include/",
+    "/usr/share/cpkg/manual/",
+    NULL
+};
+
+static int is_safe_to_unlink(const char *path) {
+    if (!path) return 0;
+    if (path[0] != '/') return 0;
+    if (strstr(path, "/../") != NULL) return 0;
+    for (int i = 0; allowed_prefixes[i]; i++) {
+        if (strncmp(path, allowed_prefixes[i], strlen(allowed_prefixes[i])) == 0)
+            return 1;
+    }
+    return 0;
+}
+
 int CPKG_remove(char *PocketName) {
     // 1. 上锁
     GetLock();
@@ -44,7 +63,6 @@ int CPKG_remove(char *PocketName) {
         return ReadRecordInformationError;
     }
 
-    // 获取文件大小
     fseek(fp, 0, SEEK_END);
     long file_size = ftell(fp);
     fseek(fp, 0, SEEK_SET);
@@ -54,7 +72,6 @@ int CPKG_remove(char *PocketName) {
         return ReadRecordInformationError;
     }
 
-    // 读取整个文件到缓冲区
     char *json_str = (char *)malloc(file_size + 1);
     if (!json_str) {
         fclose(fp);
@@ -65,15 +82,13 @@ int CPKG_remove(char *PocketName) {
     json_str[bytes_read] = '\0';
     fclose(fp);
 
-    // 解析 JSON
     cJSON *root = cJSON_Parse(json_str);
     free(json_str);
     if (!root) {
         ReleaseLock();
-        return ParseConfigError;  // 解析失败
+        return ParseConfigError;
     }
 
-    // 获取 installed_files 数组
     cJSON *files_array = cJSON_GetObjectItem(root, "installed_files");
     if (!cJSON_IsArray(files_array)) {
         cJSON_Delete(root);
@@ -84,11 +99,16 @@ int CPKG_remove(char *PocketName) {
     int array_size = cJSON_GetArraySize(files_array);
     int delete_failures = 0;
 
-    // 3. 删除参数里的所有文件
+    // 3. 删除记录里的所有文件（带安全校验）
     for (int i = 0; i < array_size; i++) {
         cJSON *item = cJSON_GetArrayItem(files_array, i);
         if (cJSON_IsString(item)) {
             const char *file_path = item->valuestring;
+            if (!is_safe_to_unlink(file_path)) {
+                fprintf(stderr, "Warning: refusing to delete unsafe path %s\n", file_path);
+                delete_failures++;
+                continue;
+            }
             if (unlink(file_path) != 0) {
                 fprintf(stderr, "Warning: failed to delete %s: %s\n", file_path, strerror(errno));
                 delete_failures++;
@@ -96,7 +116,12 @@ int CPKG_remove(char *PocketName) {
         }
     }
 
-    // 4. 删除记录文件本身
+    // 4. 尝试删除手册目录（空目录）
+    char manual_dir[PATH_MAX];
+    snprintf(manual_dir, sizeof(manual_dir), "%s%s", MANUAL_PATH, PocketName);
+    rmdir(manual_dir);
+
+    // 5. 删除记录文件本身
     if (remove(record_path) != 0) {
         fprintf(stderr, "Warning: failed to remove manifest file %s: %s\n", record_path, strerror(errno));
         delete_failures++;
@@ -104,11 +129,10 @@ int CPKG_remove(char *PocketName) {
 
     cJSON_Delete(root);
 
-    // 6. 返回结果，解锁
     if (delete_failures > 0) {
         fprintf(stderr, "Package removed with %d error(s)\n", delete_failures);
         ReleaseLock();
-        return RemoveFilesError;  // 自定义错误码，可改用其他现有错误码
+        return RemoveFilesError;
     }
 
     printf("Package Remove successfully\n");

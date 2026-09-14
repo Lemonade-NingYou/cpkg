@@ -38,9 +38,52 @@ set(SOURCES
     src/install.c
     src/remove.c
     src/list.c
+    src/manual.c
 )
 
 add_executable(cpkg ${SOURCES})
+
+# ===================== 调试 / 静态分析 =====================
+option(CPKG_DEBUG "Enable GCC -fanalyzer and extended warnings" OFF)
+
+if(CPKG_DEBUG)
+    target_compile_options(cpkg PRIVATE
+        -g -O0
+        -Wall -Wextra -Wpedantic
+        -Wformat=2 -Wshadow -Wconversion
+        -Wnull-dereference -Wduplicated-cond -Wduplicated-branches
+        -Wlogical-op -Wjump-misses-init
+        -fanalyzer
+    )
+endif()
+
+# ---- make debug-lint: 把 GCC -fanalyzer 结果写入 ./debug.log ----
+file(WRITE "${CMAKE_BINARY_DIR}/debug_lint.sh"
+"#!/bin/sh
+set -u
+cd \"${CMAKE_SOURCE_DIR}\"
+LOG=\"${CMAKE_SOURCE_DIR}/debug.log\"
+: > \"\$LOG\"
+echo \"=== GCC -fanalyzer report ===\" >> \"\$LOG\"
+echo \"=== Date: \$(date) ===\" >> \"\$LOG\"
+PKG_CFLAGS=\"\$(pkg-config --cflags libarchive yaml-0.1 openssl cjson)\"
+for f in src/*.c; do
+    echo \"\" >> \"\$LOG\"
+    echo \"===== \$f =====\" >> \"\$LOG\"
+    gcc -std=c99 -fanalyzer -Wall -Wextra -Wpedantic \\
+        -I\"${CMAKE_SOURCE_DIR}/include\" \\
+        \$PKG_CFLAGS \\
+        -c \"\$f\" -o /tmp/cpkg_analyzer.o >> \"\$LOG\" 2>&1 || true
+done
+rm -f /tmp/cpkg_analyzer.o
+echo \"Analyzer output written to \$LOG\"
+")
+
+add_custom_target(debug-lint
+    COMMAND sh "${CMAKE_BINARY_DIR}/debug_lint.sh"
+    COMMENT "Running GCC -fanalyzer, output -> ./debug.log"
+    VERBATIM
+)
 
 # ------ 查找依赖（保持不变） ------
 find_package(PkgConfig REQUIRED)

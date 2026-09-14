@@ -48,4 +48,12 @@ int CPKG_remove(char *PocketName);
  * @return 成功返回 Successful (0)，失败返回错误码（如目录打开失败）。
  */
 int CPKG_list(void);
+
+/**
+ * @brief 显示指定包的手册信息。
+ * @param PocketName 要显示手册的包名。
+ * @param node 指定的节点路径。
+ * @return 成功返回 0，失败返回非零错误码。
+ */
+int CPKG_manual(const char *PocketName, char *node);
 #endif // OPENAPI_H

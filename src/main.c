@@ -28,8 +28,9 @@ char* version_string = "2.0.0--beta";  // 版本号字符串
 static struct option long_options[] = {
     {"install", required_argument, 0, 'i'},  // 新增 --install
     {"remove", required_argument, 0, 'r'},
-    {"list", required_argument, 0, 'l'},
+    {"list", no_argument, 0, 'l'},
     {"build", required_argument, 0, 'b'},
+    {"manual", required_argument, 0, 'm'}, // 手册
     {"help", no_argument, 0, 'h'},
     {"version", no_argument, 0, 'V'},
     {0, 0, 0, 0}};
@@ -39,7 +40,7 @@ int main(int argc, char* argv[]) {
     int option_index = 0;
     char* filename = NULL;
 
-    while ((opt = getopt_long(argc, argv, "lr:i:b:hV", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "lr:i:b:m:hV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'i': {
                 filename = optarg;
@@ -72,10 +73,21 @@ int main(int argc, char* argv[]) {
                 CPKG_list();
                 break;
             }
+            case 'm': {
+                filename = optarg;
+                // 假设有一个函数来显示手册
+                int manual_result = CPKG_manual(filename, NULL); // 传入 NULL 或其他参数，根据实际情况调整
+                if (manual_result != 0) {
+                    ErrorArg(manual_result);
+                    return 1;
+                }
+                break;
+            }
             case 'h':
-                printf("Usage: %s -i <filename> | -b <filename> [-h] [-V]\n", argv[0]);
+                printf("Usage: %s -i <filename> | -b <filename> | -m <filename> [-h] [-V]\n", argv[0]);
                 printf("  -i, --install <file>   Install package\n");
                 printf("  -b, --build <file>     Build package\n");
+                printf("  -m, --manual <file>    Show manual\n");
                 printf("  -h, --help             Show this help\n");
                 printf("  -V, --version          Show version\n");
                 return 0;
@@ -83,7 +95,7 @@ int main(int argc, char* argv[]) {
                 printf("Version %s\n", version_string);
                 return 0;
             case '?':  // 未知选项或缺少参数
-                fprintf(stderr, "Usage: %s -i <filename> | -b <filename> [-h] [-V]\n", argv[0]);
+                fprintf(stderr, "Usage: %s -i <filename> | -b <filename> | -m <filename> [-h] [-V]\n", argv[0]);
                 return 1;
             default:
                 fprintf(stderr, "cpkg: internal error: impossible condition detected (but here we are)\n");

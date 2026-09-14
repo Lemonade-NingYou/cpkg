@@ -22,6 +22,8 @@
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "openapi.h"
 #include "outerror.h"
@@ -46,7 +48,7 @@ int CPKG_install(char* InstallPath) {
         return OpenCPLFile;
     }
 
-    // 验证魔术字
+    // 验证魔术字（VerifyMagic 不再自行关闭流，由调用者统一关闭）
     int MagicReturn = VerifyMagic(CPLFile);
     if (MagicReturn != Successful) {
         fclose(CPLFile);
@@ -147,7 +149,6 @@ int CPKG_install(char* InstallPath) {
         ReleaseLock();
         return DecompressJsonError;
     }
-    // 解析配置（此时 json_decomp 仍有效）
     Config* config = ParseConfigFromJson((const char*)json_decomp);
     if (!config) {
         fclose(CPLFile);
@@ -198,9 +199,10 @@ int CPKG_install(char* InstallPath) {
     InstallList installed;
     install_list_init(&installed);
 
-    char libs_temp[PATH_MAX], include_temp[PATH_MAX];
+    char libs_temp[PATH_MAX], include_temp[PATH_MAX], manual_temp[PATH_MAX];
     snprintf(libs_temp, sizeof(libs_temp), "%s/pocket/libs", TEMP_PATH);
     snprintf(include_temp, sizeof(include_temp), "%s/pocket/include", TEMP_PATH);
+    snprintf(manual_temp, sizeof(manual_temp), "%s/pocket/manual", TEMP_PATH);
 
     int ret = 0;
     if (is_dir(libs_temp)) {
@@ -217,13 +219,24 @@ int CPKG_install(char* InstallPath) {
             goto cleanup;
         }
     }
+    if (is_dir(manual_temp)) {
+        char manual_dst_base[PATH_MAX];
+        snprintf(manual_dst_base, sizeof(manual_dst_base),
+                 "%s%s", MANUAL_PATH, config->PocketName);
+        const char *manual_dsts[] = { manual_dst_base, NULL };
+
+        printf("  Installing manuals to %s...\n", manual_dst_base);
+        if (install_dir_to_multi(manual_temp, manual_dsts, 1, &installed) != 0) {
+            ret = InstallManualsError;
+            goto cleanup;
+        }
+    }
 
     // ------------------ 写入记录文件（按示例格式）------------------
     printf("Recording installation manifest...\n");
     char record_path[PATH_MAX];
     snprintf(record_path, sizeof(record_path), "%s/%s.json", WORK_DIR, config->PocketName);
 
-    // 原始 JSON 字符串不再需要，提前释放
     free(json_decomp);
     json_decomp = NULL;
 
@@ -234,7 +247,6 @@ int CPKG_install(char* InstallPath) {
         goto cleanup;
     }
 
-    // 写入 JSON 对象（按指定顺序，字段名与 Config 结构体匹配）
     fprintf(rec, "{\n");
     fprintf(rec, "  \"PocketName\": ");
     fprint_json_string(rec, config->PocketName);

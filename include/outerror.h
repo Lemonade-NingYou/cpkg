@@ -40,6 +40,8 @@ typedef enum ErrorInfo {
     GzipPocketFile,                      ///< 压缩 libs/include 目录失败
     ParseConfigFormat,                   ///< 解析配置文件格式错误
     CreateEndFile,                       ///< 创建最终 .cpl 文件失败
+    ManualNotExist,                      ///< 手册文件不存在
+    CreateManualDir,                     ///< 无法创建手册目录
 
     // -------- install 阶段错误 (16~32) --------
     OpenCPLFile,                         ///< 无法打开 .cpl 包文件
@@ -59,9 +61,14 @@ typedef enum ErrorInfo {
     CreateManifestError,                 ///< 创建安装记录文件失败
     CreateTempDirError,                  ///< 创建临时目录失败
     ReadRecordInformationError,          ///< 读取安装记录文件失败
+    InstallManualsError,                  ///< 安装手册文件失败
 
     // remove
     RemoveFilesError,                    ///< 删除文件失败（卸载时）
+
+    // manual
+    NoTranslationManual,                 ///< 手册不存在
+    CantOpenManual,                     ///< 无法打开手册文件
 } ErrorInfo;
 
 /**

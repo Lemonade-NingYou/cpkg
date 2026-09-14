@@ -75,7 +75,7 @@ int CPKG_build(char *BuildPath) {
             globfree(&glob_result);
             FreeConfig(config);
             return LibNotExist;
-    }
+        }
         for (size_t j = 0; j < glob_result.gl_pathc; j++) {
             char *src = glob_result.gl_pathv[j];
             if (copy_path_incremental(src, ".cpkg/libs") != 0) {
@@ -105,7 +105,7 @@ int CPKG_build(char *BuildPath) {
             globfree(&glob_result);
             FreeConfig(config);
             return IncludeNotExist;
-    }
+        }
         for (size_t j = 0; j < glob_result.gl_pathc; j++) {
             char *src = glob_result.gl_pathv[j];
             if (copy_path_incremental(src, ".cpkg/include") != 0) {
@@ -119,6 +119,36 @@ int CPKG_build(char *BuildPath) {
     }
     printf("done.\n");
 
+    // 复制手册文件
+    printf("copying manual files to .cpkg/manual... ");
+    if (!is_dir(".cpkg/manual")) {
+        if (mkdir(".cpkg/manual", 0755) != 0) { FreeConfig(config); return CreateManualDir; }
+    }
+    for (int i = 0; i < config->manual_count; i++) {
+        char *pattern = config->manual_patterns[i];
+        if (!pattern || strlen(pattern) == 0) continue;
+        glob_t glob_result;
+        memset(&glob_result, 0, sizeof(glob_result));
+        int ret = glob(pattern, GLOB_NOCHECK | GLOB_TILDE, NULL, &glob_result);
+        if (ret != 0) {
+            fprintf(stderr, "Failed to expand pattern: %s\n", pattern);
+            globfree(&glob_result);
+            FreeConfig(config);
+            return ManualNotExist;
+        }
+        for (size_t j = 0; j < glob_result.gl_pathc; j++) {
+            char *src = glob_result.gl_pathv[j];
+            if (copy_path_incremental(src, ".cpkg/manual") != 0) {
+                fprintf(stderr, "Failed to copy %s to .cpkg/manual\n", src);
+                globfree(&glob_result);
+                FreeConfig(config);
+                return ManualNotExist;
+            }
+        }
+        globfree(&glob_result);
+    }
+    printf("done.\n");
+
     // 压缩 config.json
     printf("compressing config.json... ");
     size_t jsonSize = 0;
@@ -126,10 +156,13 @@ int CPKG_build(char *BuildPath) {
     if (!gzipConfig) { FreeConfig(config); return GzipConfigFile; }
     printf("done.\n");
 
-    // 压缩 libs 和 include
-    printf("compressing libs and include directories... ");
+    // 压缩 libs、include 和 manual
+    printf("compressing libs, include and manual directories... ");
     size_t pocketSize = 0;
-    unsigned char *gzipPocket = GzipToMemoryDir(".cpkg/libs", ".cpkg/include", &pocketSize);
+    unsigned char *gzipPocket = GzipToMemoryDir(".cpkg/libs",
+                                                ".cpkg/include",
+                                                ".cpkg/manual",
+                                                &pocketSize);
     if (!gzipPocket) { free(gzipConfig); FreeConfig(config); return GzipPocketFile; }
     printf("done.\n");
 

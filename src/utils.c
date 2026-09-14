@@ -44,6 +44,7 @@ static int lock_fd = -1;
 static const char **g_dst_bases;
 static int g_dst_count;
 static InstallList *g_install_list;
+static const char *g_src_dir;   /* 新增：用于 install_dir_to_multi 计算相对路径 */
 
 /* ---------- 内部辅助函数 ---------- */
 static void free_str_array(char** arr, int count) {
@@ -56,7 +57,7 @@ static void safe_strcpy(char* dest, const char* src, size_t dest_size) {
     if (!dest || !src) return;
     strncpy(dest, src, dest_size - 1);
     dest[dest_size - 1] = '\0';
-    }
+}
 
 static const char* scalar_value(yaml_document_t* doc, yaml_node_t* node) {
     if (!node || node->type != YAML_SCALAR_NODE) return NULL;
@@ -154,6 +155,7 @@ Config* ReadConfig(const char* ConfigPath) {
     if (!cfg) { fclose(fh); fprintf(stderr, "Memory allocation failed\n"); return NULL; }
     safe_strcpy(cfg->default_libs_dir, "libs", sizeof(cfg->default_libs_dir));
     safe_strcpy(cfg->default_include_dir, "include", sizeof(cfg->default_include_dir));
+    safe_strcpy(cfg->default_manual_dir, "manual", sizeof(cfg->default_manual_dir));
     cfg->ignore_hidden = true;
     cfg->follow_symlinks = false;
 
@@ -216,6 +218,8 @@ Config* ReadConfig(const char* ConfigPath) {
                         cfg->include_patterns = parse_sequence(&document, fval_node, &cfg->include_count);
                     else if (strcmp(fkey, "libs") == 0)
                         cfg->lib_patterns = parse_sequence(&document, fval_node, &cfg->lib_count);
+                    else if (strcmp(fkey, "manual") == 0)
+                        cfg->manual_patterns = parse_sequence(&document, fval_node, &cfg->manual_count);
                     else if (strcmp(fkey, "exclude") == 0)
                         cfg->exclude_patterns = parse_sequence(&document, fval_node, &cfg->exclude_count);
                     else if (strcmp(fkey, "special") == 0)
@@ -236,6 +240,8 @@ Config* ReadConfig(const char* ConfigPath) {
                         safe_strcpy(cfg->default_libs_dir, dval, sizeof(cfg->default_libs_dir));
                     else if (strcmp(dkey, "include") == 0)
                         safe_strcpy(cfg->default_include_dir, dval, sizeof(cfg->default_include_dir));
+                    else if (strcmp(dkey, "manual") == 0)
+                        safe_strcpy(cfg->default_manual_dir, dval, sizeof(cfg->default_manual_dir));
                 }
             }
         } else if (strcmp(key, "strict") == 0) {
@@ -261,13 +267,14 @@ Config* ReadConfig(const char* ConfigPath) {
     yaml_parser_delete(&parser);
     fclose(fh);
     return cfg;
-            }
+}
 
 void FreeConfig(Config* config) {
     if (!config) return;
     free_str_array(config->authors, config->author_count);
     free_str_array(config->include_patterns, config->include_count);
     free_str_array(config->lib_patterns, config->lib_count);
+    free_str_array(config->manual_patterns, config->manual_count);
     free_str_array(config->exclude_patterns, config->exclude_count);
     free_str_array(config->special_files, config->special_count);
     free(config);
@@ -279,6 +286,8 @@ char* ChangeStructToJson(const Config* cfg) {
     int include_installed_count = 0;
     char** lib_installed = NULL;
     int lib_installed_count = 0;
+    char** manual_installed = NULL;
+    int manual_installed_count = 0;
 
     #define EXPAND_AND_CONVERT(patterns, count, dest_array, dest_count, default_dir, sys_prefix) \
         do { \
@@ -335,6 +344,9 @@ char* ChangeStructToJson(const Config* cfg) {
     EXPAND_AND_CONVERT(cfg->lib_patterns, cfg->lib_count,
                        lib_installed, lib_installed_count,
                        cfg->default_libs_dir, "/usr/lib/x86_64-linux-gnu");
+    EXPAND_AND_CONVERT(cfg->manual_patterns, cfg->manual_count,
+                       manual_installed, manual_installed_count,
+                       cfg->default_manual_dir, "/usr/share/cpkg/manual");
     #undef EXPAND_AND_CONVERT
 
     char* buf = NULL;
@@ -352,16 +364,18 @@ char* ChangeStructToJson(const Config* cfg) {
     fprintf(f, "  \"repository\": "); fwrite_json_string(f, cfg->repository); fprintf(f, ",\n");
     fprintf(f, "  \"include_patterns\": "); fwrite_json_array(f, include_installed, include_installed_count, 2); fprintf(f, ",\n");
     fprintf(f, "  \"lib_patterns\": "); fwrite_json_array(f, lib_installed, lib_installed_count, 2); fprintf(f, ",\n");
+    fprintf(f, "  \"manual_patterns\": "); fwrite_json_array(f, manual_installed, manual_installed_count, 2); fprintf(f, ",\n");
     fprintf(f, "  \"exclude_patterns\": "); fwrite_json_array(f, cfg->exclude_patterns, cfg->exclude_count, 2); fprintf(f, ",\n");
     fprintf(f, "  \"special_files\": "); fwrite_json_array(f, cfg->special_files, cfg->special_count, 2); fprintf(f, ",\n");
     fprintf(f, "  \"default_libs_dir\": "); fwrite_json_string(f, cfg->default_libs_dir); fprintf(f, ",\n");
     fprintf(f, "  \"default_include_dir\": "); fwrite_json_string(f, cfg->default_include_dir); fprintf(f, ",\n");
+    fprintf(f, "  \"default_manual_dir\": "); fwrite_json_string(f, cfg->default_manual_dir); fprintf(f, ",\n");
     fprintf(f, "  \"strict\": %s,\n", cfg->strict ? "true" : "false");
     fprintf(f, "  \"flatten\": %s,\n", cfg->flatten ? "true" : "false");
     fprintf(f, "  \"ignore_hidden\": %s,\n", cfg->ignore_hidden ? "true" : "false");
     fprintf(f, "  \"follow_symlinks\": %s\n", cfg->follow_symlinks ? "true" : "false");
     fprintf(f, "}\n");
-                    fclose(f);
+    fclose(f);
 
     if (include_installed) {
         for (int i = 0; i < include_installed_count; i++) free(include_installed[i]);
@@ -370,6 +384,10 @@ char* ChangeStructToJson(const Config* cfg) {
     if (lib_installed) {
         for (int i = 0; i < lib_installed_count; i++) free(lib_installed[i]);
         free(lib_installed);
+    }
+    if (manual_installed) {
+        for (int i = 0; i < manual_installed_count; i++) free(manual_installed[i]);
+        free(manual_installed);
     }
     return buf;
 
@@ -377,10 +395,14 @@ error:
     if (include_installed) {
         for (int i = 0; i < include_installed_count; i++) free(include_installed[i]);
         free(include_installed);
-        }
+    }
     if (lib_installed) {
         for (int i = 0; i < lib_installed_count; i++) free(lib_installed[i]);
         free(lib_installed);
+    }
+    if (manual_installed) {
+        for (int i = 0; i < manual_installed_count; i++) free(manual_installed[i]);
+        free(manual_installed);
     }
     return NULL;
 }
@@ -457,7 +479,7 @@ static int add_directory_to_archive(struct archive* a, const char* path, const c
         snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entry->d_name);
         if (base) snprintf(entry_name, sizeof(entry_name), "%s/%s", base, entry->d_name);
         else { strncpy(entry_name, entry->d_name, sizeof(entry_name)-1); entry_name[sizeof(entry_name)-1] = '\0'; }
-    struct stat st;
+        struct stat st;
         if (lstat(fullpath, &st) != 0) { fprintf(stderr, "Cannot stat %s\n", fullpath); continue; }
         if (S_ISDIR(st.st_mode)) {
             struct archive_entry* ae = archive_entry_new();
@@ -580,7 +602,8 @@ unsigned char* GzipToMemory(const char* filePath, size_t* outSize) {
     return ctx.data;
 }
 
-unsigned char* GzipToMemoryDir(const char* libsPath, const char* includePath, size_t* outSize) {
+unsigned char* GzipToMemoryDir(const char* libsPath, const char* includePath,
+                               const char* manualPath, size_t* outSize) {
     if (!libsPath || !includePath || !outSize) return NULL;
     *outSize = 0;
     if (!is_dir(libsPath) || !is_dir(includePath)) {
@@ -607,6 +630,13 @@ unsigned char* GzipToMemoryDir(const char* libsPath, const char* includePath, si
         archive_write_free(a);
         free(ctx.data);
         return NULL;
+    }
+    if (manualPath && is_dir(manualPath)) {
+        if (add_directory_to_archive(a, manualPath, "manual") != 0) {
+            archive_write_free(a);
+            free(ctx.data);
+            return NULL;
+        }
     }
     if (archive_write_close(a) != ARCHIVE_OK) {
         fprintf(stderr, "Error closing archive: %s\n", archive_error_string(a));
@@ -752,10 +782,11 @@ int copy_path_incremental(const char* src, const char* dst_base) {
 }
 
 /* ---------- 魔术字 ---------- */
+/* 注意：VerifyMagic 不再自行关闭流，由调用者统一关闭，避免双重 fclose */
 int VerifyMagic(FILE* stream) {
     unsigned char magic[MAGIC_LEN];
-    if (fread(magic, 1, MAGIC_LEN, stream) != MAGIC_LEN || memcmp(magic, MAGIC, MAGIC_LEN) != 0) {
-        fclose(stream);
+    if (fread(magic, 1, MAGIC_LEN, stream) != MAGIC_LEN ||
+        memcmp(magic, MAGIC, MAGIC_LEN) != 0) {
         return InvalidMagicError;
     }
     return Successful;
@@ -772,7 +803,6 @@ unsigned char* DecompressGzipToMemory(const unsigned char* compressed_data,
     if (!a) return NULL;
 
     archive_read_support_filter_gzip(a);
-    // 同时支持 tar 和 raw（raw 用于纯 gzip 流，tar 用于 tar.gz）
     archive_read_support_format_tar(a);
     archive_read_support_format_raw(a);
 
@@ -854,6 +884,17 @@ int DecompressPocketToDir(const unsigned char* pocket_gzip,
     while ((r = archive_read_next_header(a, &entry)) == ARCHIVE_OK) {
         const char* pathname = archive_entry_pathname(entry);
         if (!pathname) continue;
+
+        /* 安全检查：拒绝绝对路径和包含 .. 的路径，防止路径穿越 */
+        if (pathname[0] == '/' ||
+            strstr(pathname, "../") != NULL ||
+            strcmp(pathname, "..") == 0) {
+            fprintf(stderr, "Refusing unsafe path in archive: %s\n", pathname);
+            archive_read_close(a);
+            archive_read_free(a);
+            return -1;
+        }
+
         char dest_path[PATH_MAX];
         snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, pathname);
 
@@ -934,6 +975,7 @@ Config* ParseConfigFromJson(const char* json_str) {
     GET_STRING(repository, "repository");
     GET_STRING(default_libs_dir, "default_libs_dir");
     GET_STRING(default_include_dir, "default_include_dir");
+    GET_STRING(default_manual_dir, "default_manual_dir");
     item = cJSON_GetObjectItem(root, "strict");
     if (cJSON_IsBool(item)) cfg->strict = item->valueint != 0;
     item = cJSON_GetObjectItem(root, "flatten");
@@ -967,6 +1009,7 @@ Config* ParseConfigFromJson(const char* json_str) {
     PARSE_ARRAY(author_count, authors, "authors");
     PARSE_ARRAY(include_count, include_patterns, "include_patterns");
     PARSE_ARRAY(lib_count, lib_patterns, "lib_patterns");
+    PARSE_ARRAY(manual_count, manual_patterns, "manual_patterns");
     PARSE_ARRAY(exclude_count, exclude_patterns, "exclude_patterns");
     PARSE_ARRAY(special_count, special_files, "special_files");
     cJSON_Delete(root);
@@ -1048,12 +1091,17 @@ void install_list_free(InstallList *list) {
     list->capacity = 0;
 }
 
+/* 注意：rel_path 基于 g_src_dir 计算，保留源目录结构，避免全部被扁平化 */
 static int nftw_install_cb(const char *fpath, const struct stat *sb,
                            int typeflag, struct FTW *ftwbuf) {
-    (void)sb;
+    (void)sb; (void)ftwbuf;
+
+    size_t src_len = strlen(g_src_dir);
+    const char *rel_path = fpath + src_len;
+    if (*rel_path == '/') rel_path++;
+    if (*rel_path == '\0') return 0;  /* 根目录本身跳过 */
+
     if (typeflag == FTW_F) {
-        const char *rel_path = fpath + ftwbuf->base;
-        if (*rel_path == '/') rel_path++;
         for (int i = 0; i < g_dst_count; i++) {
             if (!g_dst_bases[i]) continue;
             char dst_path[PATH_MAX];
@@ -1072,8 +1120,6 @@ static int nftw_install_cb(const char *fpath, const struct stat *sb,
             }
         }
     } else if (typeflag == FTW_D) {
-        const char *rel_path = fpath + ftwbuf->base;
-        if (*rel_path == '/') rel_path++;
         for (int i = 0; i < g_dst_count; i++) {
             if (!g_dst_bases[i]) continue;
             char dst_path[PATH_MAX];
@@ -1090,6 +1136,7 @@ int install_dir_to_multi(const char *src_dir, const char **dst_bases,
     g_dst_bases = dst_bases;
     g_dst_count = dst_count;
     g_install_list = list;
+    g_src_dir = src_dir;   /* 记录源目录，回调里用于计算相对路径 */
     if (nftw(src_dir, nftw_install_cb, 20, FTW_PHYS) != 0) {
         fprintf(stderr, "nftw traversal failed for %s\n", src_dir);
         return -1;

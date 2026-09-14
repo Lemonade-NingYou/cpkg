@@ -40,6 +40,7 @@ Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 0211
 - ✅ **安装** – 验证并安装包到系统目录
 - ✅ **卸载** – 根据记录清单干净地卸载包
 - ✅ **列表** – 查看所有已安装的包及其元数据
+- ✅ **手册** – 查看每个包的手册，支持 Markdown 渲染与 C 语法高亮
 
 该工具已可用于实际场景，欢迎反馈和贡献。
 
@@ -47,7 +48,7 @@ Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 0211
 
 ## 介绍
 
-cpkg 是一个轻量级的 C 包管理器，用于简化 C 库和头文件的打包、安装与管理。
+cpkg 是一个轻量级的 C 包管理器，用于简化 C 库、头文件和手册的打包、安装与管理。
 
 本仓库是 cpkg 的**完全重构版**，采用模块化设计，支持完整性校验（SHA‑256）、增量构建和清单系统。
 
@@ -68,10 +69,12 @@ cpkg 是 **自由软件**，采用 GPLv3 许可证。其所有构建时和运行
 - **安装** – 验证并安装 `.cpl` 包到系统目录。
 - **卸载** – 通过读取记录清单删除已安装文件。
 - **列表** – 显示所有已安装包及其元数据。
+- **手册** – 渲染每个包的手册，支持 Markdown（标题、行内代码、加粗、斜体、删除线、链接、围栏代码块）与 C 语法高亮。
 - **完整性** – SHA‑256 哈希校验防止损坏或篡改。
 - **增量** – 构建时仅复制修改过的文件（节省时间）。
 - **清理** – 安装后自动清除临时文件。
 - **清单** – 记录每个已安装文件，便于未来卸载。
+- **安全** – 解压时防止路径穿越，卸载时使用前缀白名单。
 
 ## 项目状态
 
@@ -81,6 +84,7 @@ cpkg 是 **自由软件**，采用 GPLv3 许可证。其所有构建时和运行
 | `install`    | ✅ 已完成             |
 | `remove`     | ✅ 已完成             |
 | `list`       | ✅ 已完成             |
+| `manual`     | ✅ 已完成             |
 
 所有功能均已达到生产就绪状态，项目处于 **公测版**，欢迎测试和反馈问题。
 
@@ -127,23 +131,26 @@ authors:
 
 license: MIT
 description: |
-  A sample library demonstrating separated include/libs.
+  A sample library demonstrating separated include/libs/manual.
   Supports multiple lines.
 homepage: https://example.com/mylib
 repository: https://github.com/example/mylib
 
-# 分开定义 include 和 libs 的源路径
+# 分开定义 include、libs 和 manual 的源路径
 files:
   include:
     - include/*.h
   libs:
     - libs/test1.so
     - libs/test2.a
+  manual:
+    - docs/manual.txt
 
 # 可选默认目录（打包后归档内的路径）
 default_dirs:
   include: include
   libs: libs
+  manual: docs
 
 # 高级选项
 strict: false
@@ -165,10 +172,12 @@ follow_symlinks: false
 | `repository`           | 字符串       | 源码仓库 URL。                                                       |
 | `files.include`        | 字符串列表   | **通配符模式**，指定头文件（如 `include/*.h`）。                     |
 | `files.libs`           | 字符串列表   | **通配符模式**，指定库文件（如 `libs/*.so`）。                       |
+| `files.manual`         | 字符串列表   | **通配符模式**，指定手册文件（如 `docs/manual.txt`）。               |
 | `files.exclude`        | 字符串列表   | （可选）排除模式。                                                   |
 | `files.special`        | 字符串列表   | （可选）特殊文件，单独处理。                                         |
 | `default_dirs.include` | 字符串       | 归档内头文件的目标目录（默认：`include`）。                          |
 | `default_dirs.libs`    | 字符串       | 归档内库文件的目标目录（默认：`libs`）。                             |
+| `default_dirs.manual`  | 字符串       | 归档内手册文件的目标目录（默认：`manual`）。                         |
 | `strict`               | 布尔值       | 若为 `true`，遇到警告则失败（默认：`false`）。                      |
 | `flatten`              | 布尔值       | 安装时展平目录结构（默认：`false`）。                                |
 | `ignore_hidden`        | 布尔值       | 忽略隐藏文件（默认：`true`）。                                      |
@@ -186,7 +195,7 @@ cpkg -b /path/to/project
 
 该命令将：
 - 读取指定目录中的 `config.txt`。
-- 将所有匹配的文件复制到 `.cpkg/libs` 和 `.cpkg/include`。
+- 将所有匹配的文件复制到 `.cpkg/libs`、`.cpkg/include` 和 `.cpkg/manual`。
 - 压缩配置和文件，生成 `.cpl` 文件。
 
 输出文件为 `<PocketName>-<version>.cpl`，位于同一目录。
@@ -202,6 +211,7 @@ sudo cpkg -i mylib-1.2.3.cpl
 - 解压配置和文件。
 - 将库文件安装到 `/usr/lib/x86_64-linux-gnu/`。
 - 将头文件安装到 `/usr/include/x86_64-linux-gnu/` **和** `/usr/include/`。
+- 将手册安装到 `/usr/share/cpkg/manual/<PocketName>/`。
 - 记录所有已安装文件到 `/var/cache/cpkg/<PocketName>.json`。
 
 > **重要**：安装会写入系统目录，需要 **root 权限**（使用 `sudo`）。
@@ -214,7 +224,7 @@ sudo cpkg -r mylib
 
 该命令将：
 - 读取记录文件 `/var/cache/cpkg/mylib.json`。
-- 删除 `installed_files` 中列出的所有文件。
+- 删除 `installed_files` 中列出的所有文件（带路径前缀白名单校验）。
 - 删除记录文件本身。
 
 ### 列出已安装的包
@@ -224,6 +234,20 @@ cpkg -l
 ```
 
 将显示所有已安装包及其元数据（名称、版本、作者、许可证、描述、主页、仓库）。
+
+### 查看包手册
+
+```bash
+cpkg -m mylib
+```
+
+将渲染 `/usr/share/cpkg/manual/mylib/manual.txt`，支持：
+
+- Markdown 标题（`#` 到 `######`），每级样式不同。
+- 行内代码 `` `code` `` 显示为灰色。
+- **加粗**、*斜体*、~~删除线~~。
+- `[文字](url)` 链接。
+- 围栏代码块内 C 语法高亮（关键字、类型、字符串、数字、注释、预处理指令、函数名、变量名）。
 
 ### 帮助与版本
 
@@ -238,14 +262,23 @@ cpkg -V   # 显示版本号
 
 | 偏移 | 大小  | 描述                               |
 |------|-------|------------------------------------|
-| 0    | 3     | 魔术字：`"CPL"`                    |
-| 3    | 32    | 整个数据块的 SHA‑256 哈希          |
-| 35   | 4     | 压缩的 JSON 配置大小               |
-| 39   | 可变  | gzip 压缩的 JSON 配置              |
+| 0    | 4     | 魔术字：`"CPKG"`                   |
+| 4    | 32    | 整个数据块的 SHA‑256 哈希          |
+| 36   | 4     | 压缩的 JSON 配置大小               |
+| 40   | 可变  | gzip 压缩的 JSON 配置              |
 | ...  | 4     | 压缩的 pocket（文件）大小          |
-| ...  | 可变  | gzip 压缩的 pocket（tar.gz）       |
+| ...  | 可变  | gzip 压缩的 pocket（tar.gz，包含 `libs/`、`include/`、`manual/`） |
 
 哈希确保整个数据部分的完整性。
+
+## 本次修复的问题
+
+- **`VerifyMagic` 双重 `fclose`** – `VerifyMagic` 不再关闭流，由调用者统一关闭一次。
+- **`install_dir_to_multi` 相对路径丢失** – 安装时保留源目录结构，不再把所有文件平铺到 basename。
+- **`--list` 选项类型** – `--list` 改为 `no_argument`，与 `-l` 一致。
+- **`outerror` 缺少错误码** – 补充 `ReadRecordInformationError`、`RemoveFilesError`、`CreateManualDir`、`ManualNotExist`、`InstallManualsError`。
+- **路径穿越保护** – `DecompressPocketToDir` 拒绝绝对路径和 `../` 条目。
+- **任意文件删除** – `CPKG_remove` 在 `unlink` 前校验路径前缀白名单（`/usr/lib/`、`/usr/include/`、`/usr/share/cpkg/manual/`）。
 
 ## 贡献
 

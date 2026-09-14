@@ -106,6 +106,33 @@ void ErrorArg(int errorCode) {
         case CreateTempDirError:
             fprintf(stderr, "Error: Failed to create temporary directory.\n");
             break;
+        case ReadRecordInformationError:
+            fprintf(stderr, "Error: Failed to read installation record information.\n");
+            break;
+        case RemoveFilesError:
+            fprintf(stderr, "Error: Failed to remove files during uninstallation.\n");
+            break;
+        case NoTranslationManual:
+            fprintf(stderr, "Error: Manual does not exist.\n");
+            break;
+        case CantOpenManual:
+            fprintf(stderr, "Error: Unable to open manual file.\n");
+            break;
+        case InstallManualsError:
+            fprintf(stderr, "Error: Failed to install manual files.\n");
+            break;
+            case MemoryAllocError:
+            fprintf(stderr, "Error: Memory allocation failed.\n");
+            break;
+        case HashComputeError:
+            fprintf(stderr, "Error: SHA-256 hash computation failed.\n");
+            break;
+        case ManualNotExist:
+            fprintf(stderr, "Error: Manual files do not exist.\n");
+            break;
+        case CreateManualDir:
+            fprintf(stderr, "Error: Unable to create manual directory.\n");
+            break;
 		default:
 			fprintf(stderr, "Unknown error code: %d\n", errorCode);
 	}
