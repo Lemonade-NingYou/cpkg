@@ -290,12 +290,16 @@ manual.txt
 
 # 个人配置
 .local/
+softdoc
 .user.ini
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+mannal.md
+manual.docx
+srcdocgen.toml
 
 # ============================================
 # 包管理器

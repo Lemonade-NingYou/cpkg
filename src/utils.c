@@ -44,7 +44,7 @@ static int lock_fd = -1;
 static const char **g_dst_bases;
 static int g_dst_count;
 static InstallList *g_install_list;
-static const char *g_src_dir;   /* 新增：用于 install_dir_to_multi 计算相对路径 */
+static const char *g_src_dir;   /* 用于 install_dir_to_multi 计算相对路径 */
 
 /* ---------- 内部辅助函数 ---------- */
 static void free_str_array(char** arr, int count) {
@@ -57,6 +57,31 @@ static void safe_strcpy(char* dest, const char* src, size_t dest_size) {
     if (!dest || !src) return;
     strncpy(dest, src, dest_size - 1);
     dest[dest_size - 1] = '\0';
+}
+
+/* 递归创建目录，等价于 mkdir -p。成功或已存在返回 0，失败返回 -1。 */
+static int mkdir_p(const char *path) {
+    if (!path || path[0] == '\0') return -1;
+
+    char tmp[PATH_MAX];
+    size_t len = strlen(path);
+    if (len >= sizeof(tmp)) return -1;
+    memcpy(tmp, path, len + 1);
+
+    /* 去掉末尾多余的 '/'，但保留根 "/" */
+    while (len > 1 && tmp[len - 1] == '/') {
+        tmp[--len] = '\0';
+    }
+
+    for (char *p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = '\0';
+            if (mkdir(tmp, 0755) != 0 && errno != EEXIST) return -1;
+            *p = '/';
+        }
+    }
+    if (mkdir(tmp, 0755) != 0 && errno != EEXIST) return -1;
+    return 0;
 }
 
 static const char* scalar_value(yaml_document_t* doc, yaml_node_t* node) {
@@ -1106,10 +1131,19 @@ static int nftw_install_cb(const char *fpath, const struct stat *sb,
             if (!g_dst_bases[i]) continue;
             char dst_path[PATH_MAX];
             snprintf(dst_path, sizeof(dst_path), "%s/%s", g_dst_bases[i], rel_path);
+
+            /* 用 mkdir_p 递归创建父目录，保证多级路径也能一次到位 */
             char *dir = strdup(dst_path);
+            if (!dir) return -1;
             char *dirpart = dirname(dir);
-            mkdir(dirpart, 0755);
+            if (mkdir_p(dirpart) != 0) {
+                fprintf(stderr, "Failed to create directory %s: %s\n",
+                        dirpart, strerror(errno));
+                free(dir);
+                return -1;
+            }
             free(dir);
+
             if (copy_file_simple(fpath, dst_path) != 0) {
                 fprintf(stderr, "Failed to copy %s to %s\n", fpath, dst_path);
                 return -1;
@@ -1124,7 +1158,11 @@ static int nftw_install_cb(const char *fpath, const struct stat *sb,
             if (!g_dst_bases[i]) continue;
             char dst_path[PATH_MAX];
             snprintf(dst_path, sizeof(dst_path), "%s/%s", g_dst_bases[i], rel_path);
-            mkdir(dst_path, 0755);
+            if (mkdir_p(dst_path) != 0) {
+                fprintf(stderr, "Failed to create directory %s: %s\n",
+                        dst_path, strerror(errno));
+                return -1;
+            }
         }
     }
     return 0;
@@ -1133,6 +1171,18 @@ static int nftw_install_cb(const char *fpath, const struct stat *sb,
 int install_dir_to_multi(const char *src_dir, const char **dst_bases,
                          int dst_count, InstallList *list) {
     if (!src_dir || !dst_bases || dst_count <= 0 || !list) return -1;
+
+    /* 先把每个目标基目录 mkdir -p 出来，
+       避免源目录下没有子目录时目标基目录缺失 */
+    for (int i = 0; i < dst_count; i++) {
+        if (!dst_bases[i]) continue;
+        if (mkdir_p(dst_bases[i]) != 0) {
+            fprintf(stderr, "Failed to create destination base %s: %s\n",
+                    dst_bases[i], strerror(errno));
+            return -1;
+        }
+    }
+
     g_dst_bases = dst_bases;
     g_dst_count = dst_count;
     g_install_list = list;
